@@ -9,11 +9,13 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Box
+  Box,
+  Link
 } from '@mui/material';
 import {
   Menu as MenuIcon,
-  AccountCircle as AccountIcon
+  AccountCircle as AccountIcon,
+  People as FamilyIcon
 } from '@mui/icons-material';
 import { logout } from '../../store/slices/authSlice';
 import { logoutUser } from '../../services/auth';
@@ -69,16 +71,36 @@ const Header = () => {
             <Box sx={{ mr: 2 }}>
               <Button
                 color="inherit"
-                onClick={() => navigate('/dashboard')}
+                component={Link}
+                to="/dashboard"
               >
                 Dashboard
               </Button>
               <Button
                 color="inherit"
-                onClick={() => navigate('/chores')}
+                component={Link}
+                to="/chores"
               >
                 Chores
               </Button>
+              {user.role === 'parent' && (
+                <>
+                  <Button
+                    color="inherit"
+                    component={Link}
+                    to="/family"
+                  >
+                    Family
+                  </Button>
+                  <Button
+                    color="inherit"
+                    component={Link}
+                    to="/chore-management"
+                  >
+                    Manage Chores
+                  </Button>
+                </>
+              )}
             </Box>
             <IconButton
               size="large"

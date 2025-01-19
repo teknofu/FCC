@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isParent() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent';
+    }
+    
+    function isChild() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'child';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      allow read: if isAuthenticated();  // Allow all authenticated users to read user documents
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isOwner(userId) || isParent());
+      allow delete: if false;
+    }
+
+    // Chores collection rules
+    match /chores/{choreId} {
+      allow read: if isAuthenticated() && 
+        (isParent() || 
+         (isChild() && resource.data.assignedTo == request.auth.uid));
+      
+      allow create: if isParent();
+      
+      allow update: if isAuthenticated() && 
+        (isParent() || 
+         (isChild() && resource.data.assignedTo == request.auth.uid && 
+          request.resource.data.status == 'completed'));
+      
+      allow delete: if isParent();
+    }
+
+    // Rewards collection rules
+    match /rewards/{rewardId} {
+      allow read: if isAuthenticated();
+      allow write: if isParent();
+    }
+  }
+}

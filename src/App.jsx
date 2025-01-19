@@ -1,25 +1,17 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import theme from './theme';
 import Header from './components/Layout/Header';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Chores from './pages/Chores';
+import FamilyManagement from './pages/FamilyManagement';
+import ChoreManagement from './pages/ChoreManagement';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import './App.css';
-
-// Create a theme instance
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#2196f3',
-    },
-    secondary: {
-      main: '#f50057',
-    },
-  },
-});
 
 function App() {
   return (
@@ -45,6 +37,22 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Chores />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/family"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <FamilyManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/chore-management"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <ChoreManagement />
                   </ProtectedRoute>
                 }
               />

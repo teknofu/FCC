@@ -14,7 +14,7 @@ import {
   MenuItem,
   Alert,
 } from '@mui/material';
-import { loginUser } from '../services/auth';
+import { loginUser, registerUser } from '../services/auth';
 import { setUser, setRole, setError, setLoading } from '../store/slices/authSlice';
 
 const Login = () => {
@@ -27,16 +27,39 @@ const Login = () => {
     email: '',
     password: '',
   });
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       dispatch(setLoading(true));
-      const user = await loginUser(formData.email, formData.password);
+      let user;
+      
+      if (isRegistering) {
+        console.log('Registering new user with role:', userType);
+        user = await registerUser(formData.email, formData.password, formData.email.split('@')[0], userType);
+      } else {
+        console.log('Logging in user');
+        user = await loginUser(formData.email, formData.password);
+      }
+
+      console.log('User data received:', user);
+      
+      if (!user) {
+        throw new Error('No user data received');
+      }
+
+      if (!user.role) {
+        console.error('No role found in user data:', user);
+        throw new Error('User role not found. Please contact support.');
+      }
+
       dispatch(setUser(user));
-      dispatch(setRole(userType));
+      dispatch(setRole(user.role));
+      console.log('User successfully logged in with role:', user.role);
       navigate('/dashboard');
     } catch (err) {
+      console.error('Login/Register error:', err);
       dispatch(setError(err.message));
     }
   };
@@ -54,7 +77,7 @@ const Login = () => {
       <Box sx={{ mt: 8 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
           <Typography variant="h5" component="h1" gutterBottom align="center">
-            Login to Family Chore Chart
+            {isRegistering ? 'Register for' : 'Login to'} Family Chore Chart
           </Typography>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -103,7 +126,15 @@ const Login = () => {
               sx={{ mt: 3, mb: 2 }}
               disabled={loading}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Please wait...' : (isRegistering ? 'Register' : 'Sign In')}
+            </Button>
+            <Button
+              fullWidth
+              color="secondary"
+              onClick={() => setIsRegistering(!isRegistering)}
+              disabled={loading}
+            >
+              {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register'}
             </Button>
           </form>
         </Paper>
