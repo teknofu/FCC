@@ -1,0 +1,78 @@
+﻿Product Requirements Document (PRD)
+Product Name: Family Chore Chart
+Date: 1-18-2025
+Version: 1.0
+1. Introduction
+The Family Chore Chart is a web application designed to streamline the management and tracking of household chores. The app will provide a centralized platform for parents to assign chores, children to mark chores as complete, and parents to authenticate and reward completed chores.
+2. Goals and Objectives
+* Simplify chore management for parents.
+* Increase children's participation and accountability in household chores.
+* Promote a fair and transparent system for assigning and rewarding chores.
+* Foster a sense of responsibility and teamwork within the family.
+3. Target Audience
+The primary target audience for this app is families with children who are responsible for completing household chores. The app is designed to be accessible and engaging for both parents and children.
+4. User Roles and Permissions
+The app will have two main user roles:
+* Parent:
+
+   * Create and manage user accounts for children.
+   * Assign chores to children, including daily, weekly, and one-off chores.
+   * Set the monetary value of each chore.
+   * Approve or reject completed chores.
+   * Track the chore completion progress of each child.
+   * Manage the reward system and track earnings for each child.
+   * Schedule chores, set reminders, and communicate with children through the app.
+   * Child:
+
+      * View assigned chores.
+      * Mark chores as complete.
+      * Track their chore completion progress.
+      * View their earnings.
+      * Request changes to assigned chores.
+5. Functional Requirements
+      * User Authentication:
+
+         * Secure login system for both parent and child users.
+         * Password reset functionality.
+         * Chore Management:
+
+            * Create, edit, and delete chores.
+            * Assign chores to specific children.
+            * Categorize chores as daily, weekly, or one-off.
+            * Set a monetary value for each chore.
+            * Chore Completion Tracking:
+
+               * Children can mark chores as complete.
+               * Parents can approve or reject completed chores.
+               * Visual progress tracking for each child.
+               * Reward System:
+
+                  * Monetary reward system for completed chores.
+                  * Track earnings for each child.
+                  * Additional Features:
+
+                     * Chore scheduling and reminders.
+                     * In-app communication between parents and children.
+                     * Chore request and approval system for children.
+6. User Interface (UI) and User Experience (UX) Requirements
+                     * The app should have a clean, intuitive, and user-friendly interface.
+                     * The design should be visually appealing and engaging for children.
+                     * The app should be easy to navigate on a mobile phone, as this is the primary use case.
+                     * The app should be responsive and perform well on various devices.
+7. Technical Requirements
+                     * The app should be developed as a web application accessible through a mobile browser.
+                     * The backend can be developed using a suitable framework (e.g., Node.js, Python/Django, Ruby on Rails).
+                     * The frontend can be developed using a JavaScript framework (e.g., React, Angular, Vue.js).
+                     * The app should be hosted on a reliable and scalable platform.
+8. Success Metrics
+                     * Number of active users.
+                     * Frequency of app usage.
+                     * User engagement with the reward system.
+                     * User feedback and satisfaction.
+9. Other Considerations
+                     * Integration with other household management tools.
+                     * Gamification features to further incentivize chore completion.
+                     * Advanced analytics and reporting for parents.
+10. Conclusion
+The Family Chore Chart web app has the potential to significantly improve how families manage and track household chores. By providing a user-friendly platform that is accessible on mobile devices, the app can empower children to take ownership of their chores while providing parents with the tools they need to effectively manage household responsibilities.
+This PRD provides a detailed overview of the requirements for the Family Chore Chart web app. It serves as a roadmap for the development team and ensures that the final product meets the needs of the target audience.
