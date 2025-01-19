@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
@@ -7,9 +7,9 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Chores from './pages/Chores';
 import FamilyManagement from './pages/FamilyManagement';
 import ChoreManagement from './pages/ChoreManagement';
+import Profile from './pages/Profile';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import './App.css';
 
@@ -35,10 +35,10 @@ function App() {
               }
             />
             <Route
-              path="/chores"
+              path="/profile"
               element={
                 <ProtectedRoute>
-                  <Chores />
+                  <Profile />
                 </ProtectedRoute>
               }
             />
@@ -53,9 +53,9 @@ function App() {
               }
             />
             <Route
-              path="/chore-management"
+              path="/chores"
               element={
-                <ProtectedRoute allowedRoles={['parent']}>
+                <ProtectedRoute>
                   <ChoreManagement />
                 </ProtectedRoute>
               }

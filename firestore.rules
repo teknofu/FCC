@@ -1,51 +1,58 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isParent() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent';
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent';
     }
-    
+
     function isChild() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'child';
-    }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'child';
     }
 
-    // Users collection rules
+    function isAssignedToUser(choreData) {
+      return choreData.assignedTo == request.auth.uid;
+    }
+
+    function isChoreCreator(choreData) {
+      return choreData.createdBy == request.auth.uid;
+    }
+
+    // Users collection
     match /users/{userId} {
-      allow read: if isAuthenticated();  // Allow all authenticated users to read user documents
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (isOwner(userId) || isParent());
-      allow delete: if false;
+      allow read: if isAuthenticated();
+      allow write: if request.auth.uid == userId;
     }
 
-    // Chores collection rules
+    // Chores collection
     match /chores/{choreId} {
-      allow read: if isAuthenticated() && 
-        (isParent() || 
-         (isChild() && resource.data.assignedTo == request.auth.uid));
+      allow read: if isAuthenticated() && (
+        isParent() || 
+        (isChild() && isAssignedToUser(resource.data))
+      );
       
-      allow create: if isParent();
+      allow create: if isAuthenticated() && isParent();
       
-      allow update: if isAuthenticated() && 
-        (isParent() || 
-         (isChild() && resource.data.assignedTo == request.auth.uid && 
-          request.resource.data.status == 'completed'));
+      allow update: if isAuthenticated() && (
+        isParent() || 
+        (isChild() && isAssignedToUser(resource.data) && 
+         request.resource.data.diff(resource.data).affectedKeys()
+         .hasOnly(['status', 'completedAt', 'updatedAt']))
+      );
       
-      allow delete: if isParent();
+      allow delete: if isAuthenticated() && isParent() && isChoreCreator(resource.data);
     }
 
-    // Rewards collection rules
+    // Family collection
+    match /family/{familyId} {
+      allow read, write: if isAuthenticated() && isParent();
+    }
+
+    // Rewards collection
     match /rewards/{rewardId} {
       allow read: if isAuthenticated();
       allow write: if isParent();

@@ -2,29 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import {
   Container,
-  Paper,
-  Typography,
-  Button,
   Grid,
   Card,
   CardContent,
   CardActions,
+  Typography,
+  Button,
+  IconButton,
+  Box,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  IconButton,
-  Box,
   Alert,
   CircularProgress
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Assessment as StatsIcon
-} from '@mui/icons-material';
+import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import {
   getFamilyMembers,
   addChildAccount,
@@ -36,11 +30,11 @@ import {
 const FamilyManagement = () => {
   const { user } = useSelector((state) => state.auth);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [familyMembers, setFamilyMembers] = useState([]);
+  const [childStats, setChildStats] = useState({});
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedChild, setSelectedChild] = useState(null);
-  const [childStats, setChildStats] = useState({});
   const [formData, setFormData] = useState({
     displayName: '',
     email: '',
@@ -49,23 +43,29 @@ const FamilyManagement = () => {
   });
 
   useEffect(() => {
-    loadFamilyMembers();
-  }, []);
+    if (user?.uid) {
+      loadFamilyMembers();
+    }
+  }, [user]);
 
   const loadFamilyMembers = async () => {
     try {
       setLoading(true);
+      setError('');
       const members = await getFamilyMembers(user.uid);
       setFamilyMembers(members);
       
       // Load stats for each child
       const stats = {};
       for (const member of members) {
-        stats[member.id] = await getChildStats(member.id);
+        if (member.role === 'child') {
+          stats[member.id] = await getChildStats(member.id);
+        }
       }
       setChildStats(stats);
-    } catch (err) {
-      setError(err.message);
+    } catch (error) {
+      console.error('Error loading family members:', error);
+      setError(error.message || 'Failed to load family members');
     } finally {
       setLoading(false);
     }
@@ -74,8 +74,8 @@ const FamilyManagement = () => {
   const handleOpenDialog = (child = null) => {
     if (child) {
       setFormData({
-        displayName: child.displayName,
-        email: child.email,
+        displayName: child.displayName || '',
+        email: child.email || '',
         dateOfBirth: child.dateOfBirth || '',
         allowance: child.allowance || ''
       });
@@ -105,95 +105,97 @@ const FamilyManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
     try {
-      setLoading(true);
       if (selectedChild) {
         await updateChildAccount(selectedChild.id, formData);
       } else {
-        const result = await addChildAccount(user.uid, formData);
-        // Show temporary password to parent
-        alert(`Temporary password for ${formData.displayName}: ${result.temporaryPassword}`);
+        await addChildAccount(user.uid, formData);
       }
       handleCloseDialog();
       loadFamilyMembers();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error saving child account:', error);
+      setError(error.message || 'Failed to save child account');
     }
   };
 
   const handleRemoveChild = async (childId) => {
-    if (window.confirm('Are you sure you want to remove this child from your family?')) {
-      try {
-        setLoading(true);
-        await removeChildAccount(childId);
-        loadFamilyMembers();
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+    if (!window.confirm('Are you sure you want to remove this child account?')) {
+      return;
+    }
+
+    try {
+      await removeChildAccount(childId);
+      loadFamilyMembers();
+    } catch (error) {
+      console.error('Error removing child account:', error);
+      setError(error.message || 'Failed to remove child account');
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  if (loading && !familyMembers.length) {
+  if (!user?.uid) {
     return (
-      <Container sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Alert severity="error">
+          You must be logged in to view this page
+        </Alert>
       </Container>
     );
   }
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Paper sx={{ p: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h5">Family Management</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Child
-          </Button>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4">Family Management</Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={() => handleOpenDialog()}
+        >
+          Add Child Account
+        </Button>
+      </Box>
+
+      {loading ? (
+        <Box display="flex" justifyContent="center" my={4}>
+          <CircularProgress />
         </Box>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
-
+      ) : (
         <Grid container spacing={3}>
-          {familyMembers.map((child) => (
-            <Grid item xs={12} sm={6} md={4} key={child.id}>
+          {familyMembers.map((member) => (
+            <Grid item xs={12} sm={6} md={4} key={member.id}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    {child.displayName}
+                    {member.displayName}
                   </Typography>
                   <Typography color="textSecondary" gutterBottom>
-                    {child.email}
+                    {member.email}
                   </Typography>
-                  {childStats[child.id] && (
+                  <Typography variant="body2" color="textSecondary">
+                    Role: {member.role}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Earned: ${member.earnings?.toFixed(2) || '0.00'}
+                  </Typography>
+                  {childStats[member.id] && (
                     <Box mt={2}>
                       <Typography variant="body2">
-                        Chores Completed: {childStats[child.id].totalChoresCompleted}
+                        Chores Completed: {childStats[member.id].totalChoresCompleted}
                       </Typography>
                       <Typography variant="body2">
-                        Rewards Earned: ${childStats[child.id].totalRewardsEarned}
+                        Rewards Earned: ${childStats[member.id].totalRewardsEarned?.toFixed(2) || '0.00'}
                       </Typography>
                       <Typography variant="body2">
-                        This Week: {childStats[child.id].weeklyChoresCompleted} chores
+                        This Week: {childStats[member.id].weeklyChoresCompleted} chores
                       </Typography>
                     </Box>
                   )}
@@ -201,14 +203,14 @@ const FamilyManagement = () => {
                 <CardActions>
                   <IconButton
                     size="small"
-                    onClick={() => handleOpenDialog(child)}
+                    onClick={() => handleOpenDialog(member)}
                     title="Edit"
                   >
                     <EditIcon />
                   </IconButton>
                   <IconButton
                     size="small"
-                    onClick={() => handleRemoveChild(child.id)}
+                    onClick={() => handleRemoveChild(member.id)}
                     title="Remove"
                     color="error"
                   >
@@ -219,69 +221,64 @@ const FamilyManagement = () => {
             </Grid>
           ))}
         </Grid>
+      )}
 
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-          <form onSubmit={handleSubmit}>
-            <DialogTitle>
-              {selectedChild ? 'Edit Child Account' : 'Add Child Account'}
-            </DialogTitle>
-            <DialogContent>
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid item xs={12}>
-                  <TextField
-                    name="displayName"
-                    label="Name"
-                    value={formData.displayName}
-                    onChange={handleChange}
-                    fullWidth
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    name="email"
-                    label="Email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    fullWidth
-                    required
-                    disabled={!!selectedChild}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    name="dateOfBirth"
-                    label="Date of Birth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={handleChange}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    name="allowance"
-                    label="Weekly Allowance ($)"
-                    type="number"
-                    value={formData.allowance}
-                    onChange={handleChange}
-                    fullWidth
-                    inputProps={{ min: 0, step: 0.5 }}
-                  />
-                </Grid>
-              </Grid>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCloseDialog}>Cancel</Button>
-              <Button type="submit" variant="contained" disabled={loading}>
-                {loading ? 'Saving...' : (selectedChild ? 'Update' : 'Create')}
-              </Button>
-            </DialogActions>
-          </form>
-        </Dialog>
-      </Paper>
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>
+          {selectedChild ? 'Edit Child Account' : 'Add Child Account'}
+        </DialogTitle>
+        <DialogContent>
+          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Display Name"
+              value={formData.displayName}
+              onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+              margin="normal"
+              required
+            />
+            {!selectedChild && (
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                margin="normal"
+                required
+              />
+            )}
+            <TextField
+              fullWidth
+              label="Date of Birth"
+              type="date"
+              value={formData.dateOfBirth}
+              onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+              margin="normal"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Weekly Allowance"
+              type="number"
+              value={formData.allowance}
+              onChange={(e) => setFormData({ ...formData, allowance: e.target.value })}
+              margin="normal"
+              InputProps={{
+                startAdornment: <span>$</span>,
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained" color="primary">
+            {selectedChild ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

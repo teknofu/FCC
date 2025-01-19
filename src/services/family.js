@@ -20,6 +20,11 @@ export const getFamilyMembers = async (parentId) => {
   try {
     console.log('Getting family members for parent:', parentId);
     
+    if (!parentId) {
+      console.error('No parent ID provided');
+      throw new Error('No parent ID provided');
+    }
+
     // First verify the parent's role
     const parentDoc = await getDoc(doc(db, 'users', parentId));
     if (!parentDoc.exists()) {
@@ -33,18 +38,22 @@ export const getFamilyMembers = async (parentId) => {
       throw new Error('User is not a parent');
     }
 
-    // Get all users and filter for children
+    // Query users collection for children of this parent
     const usersRef = collection(db, 'users');
-    const querySnapshot = await getDocs(usersRef);
+    const q = query(
+      usersRef,
+      where('parentId', '==', parentId),
+      where('role', '==', 'child')
+    );
     
-    const members = querySnapshot.docs
-      .filter(doc => doc.data().parentId === parentId)
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate()
-      }));
+    const querySnapshot = await getDocs(q);
+    
+    const members = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate()
+    }));
     
     console.log('Found family members:', members);
     return members;

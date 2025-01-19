@@ -3,11 +3,14 @@ import { useSelector } from 'react-redux';
 import { 
   createChore, 
   getChores, 
+  getAssignedChores,
   updateChore, 
   deleteChore,
   markChoreComplete,
-  verifyChore 
+  verifyChore,
+  getChildStats
 } from '../services/chores';
+import { getFamilyMembers } from '../services/family';
 import {
   Container,
   Grid,
@@ -23,39 +26,100 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Checkbox,
+  FormGroup,
+  FormControlLabel,
+  InputAdornment
 } from '@mui/material';
+
+// Days of the week for scheduling
+const DAYS_OF_WEEK = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
+];
 
 const ChoreManagement = () => {
   const { user, role } = useSelector((state) => state.auth);
   const [chores, setChores] = useState([]);
+  const [familyMembers, setFamilyMembers] = useState([]);
+  const [childStats, setChildStats] = useState({});
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedChore, setSelectedChore] = useState(null);
   const [filters, setFilters] = useState({
     status: 'all',
     timeframe: 'all'
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Form state for new/edit chore
   const [choreForm, setChoreForm] = useState({
     title: '',
     description: '',
-    points: 0,
+    reward: 0,
     timeframe: 'daily',
-    assignedTo: ''
+    assignedTo: '',
+    scheduledDays: DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {})
   });
 
   useEffect(() => {
-    loadChores();
-  }, [filters]);
+    if (user?.uid) {
+      loadChores();
+      if (role === 'parent') {
+        loadFamilyMembers();
+      }
+    }
+  }, [user, role]);
 
   const loadChores = async () => {
     try {
-      const loadedChores = await getChores(filters);
-      setChores(loadedChores);
+      setLoading(true);
+      setError('');
+      let choresList;
+      if (role === 'parent') {
+        // Parents see all chores they created
+        choresList = await getChores(user.uid);
+      } else {
+        // Children only see chores assigned to them
+        choresList = await getAssignedChores(user.uid);
+      }
+      setChores(choresList);
     } catch (error) {
       console.error('Error loading chores:', error);
-      // TODO: Add error notification
+      setError(error.message || 'Failed to load chores');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFamilyMembers = async () => {
+    if (role !== 'parent') return;
+    
+    try {
+      setLoading(true);
+      setError('');
+      const members = await getFamilyMembers(user.uid);
+      setFamilyMembers(members);
+      
+      // Load stats for each child
+      const stats = {};
+      for (const member of members) {
+        if (member.role === 'child') {
+          stats[member.id] = await getChildStats(member.id);
+        }
+      }
+      setChildStats(stats);
+    } catch (error) {
+      console.error('Error loading family members:', error);
+      setError(error.message || 'Failed to load family members');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,18 +128,20 @@ const ChoreManagement = () => {
       setChoreForm({
         title: chore.title,
         description: chore.description,
-        points: chore.points,
+        reward: chore.reward || 0,
         timeframe: chore.timeframe,
-        assignedTo: chore.assignedTo
+        assignedTo: chore.assignedTo,
+        scheduledDays: chore.scheduledDays || DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {})
       });
       setSelectedChore(chore);
     } else {
       setChoreForm({
         title: '',
         description: '',
-        points: 0,
+        reward: 0,
         timeframe: 'daily',
-        assignedTo: ''
+        assignedTo: '',
+        scheduledDays: DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {})
       });
       setSelectedChore(null);
     }
@@ -88,75 +154,120 @@ const ChoreManagement = () => {
     setChoreForm({
       title: '',
       description: '',
-      points: 0,
+      reward: 0,
       timeframe: 'daily',
-      assignedTo: ''
+      assignedTo: '',
+      scheduledDays: DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {})
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
     try {
+      setLoading(true);
       if (selectedChore) {
-        await updateChore(selectedChore.id, choreForm);
+        await updateChore(selectedChore.id, {
+          ...choreForm,
+          updatedAt: new Date()
+        });
       } else {
-        await createChore(choreForm);
+        await createChore({
+          ...choreForm,
+          createdBy: user.uid,
+          status: 'pending'
+        });
       }
       handleCloseDialog();
       loadChores();
     } catch (error) {
       console.error('Error saving chore:', error);
-      // TODO: Add error notification
+      setError(error.message || 'Failed to save chore');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (choreId) => {
+    if (!window.confirm('Are you sure you want to delete this chore?')) {
+      return;
+    }
+
     try {
+      setLoading(true);
+      setError('');
       await deleteChore(choreId);
       loadChores();
     } catch (error) {
       console.error('Error deleting chore:', error);
-      // TODO: Add error notification
+      setError(error.message || 'Failed to delete chore');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleMarkComplete = async (choreId) => {
     try {
+      setLoading(true);
+      setError('');
       await markChoreComplete(choreId, user.uid);
       loadChores();
     } catch (error) {
       console.error('Error marking chore complete:', error);
-      // TODO: Add error notification
+      setError(error.message || 'Failed to mark chore as complete');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleVerify = async (choreId, approved) => {
+  const handleVerify = async (choreId, isApproved) => {
     try {
-      await verifyChore(choreId, user.uid, approved);
+      setLoading(true);
+      setError('');
+      await verifyChore(choreId, isApproved, user.uid);
       loadChores();
     } catch (error) {
       console.error('Error verifying chore:', error);
-      // TODO: Add error notification
+      setError(error.message || 'Failed to verify chore');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleDayToggle = (day) => {
+    setChoreForm(prev => ({
+      ...prev,
+      scheduledDays: {
+        ...prev.scheduledDays,
+        [day]: !prev.scheduledDays[day]
+      }
+    }));
+  };
+
+  const showAddButton = role === 'parent';
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography variant="h4">Chore Management</Typography>
-            <Button 
-              variant="contained" 
-              color="primary" 
-              onClick={() => handleOpenDialog()}
-            >
-              Add New Chore
-            </Button>
+            <Typography variant="h4">
+              {role === 'parent' ? 'Manage Chores' : 'My Chores'}
+            </Typography>
+            {showAddButton && (
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={() => handleOpenDialog()}
+              >
+                Add New Chore
+              </Button>
+            )}
           </Box>
         </Grid>
 
-        {/* Filters */}
+        {/* Filters - Only show status filter for children */}
         <Grid item xs={12}>
           <Paper sx={{ p: 2 }}>
             <Grid container spacing={2}>
@@ -176,21 +287,23 @@ const ChoreManagement = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Timeframe</InputLabel>
-                  <Select
-                    value={filters.timeframe}
-                    label="Timeframe"
-                    onChange={(e) => setFilters({ ...filters, timeframe: e.target.value })}
-                  >
-                    <MenuItem value="all">All</MenuItem>
-                    <MenuItem value="daily">Daily</MenuItem>
-                    <MenuItem value="weekly">Weekly</MenuItem>
-                    <MenuItem value="monthly">Monthly</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+              {role === 'parent' && (
+                <Grid item xs={12} sm={6} md={4}>
+                  <FormControl fullWidth>
+                    <InputLabel>Timeframe</InputLabel>
+                    <Select
+                      value={filters.timeframe}
+                      label="Timeframe"
+                      onChange={(e) => setFilters({ ...filters, timeframe: e.target.value })}
+                    >
+                      <MenuItem value="all">All</MenuItem>
+                      <MenuItem value="daily">Daily</MenuItem>
+                      <MenuItem value="weekly">Weekly</MenuItem>
+                      <MenuItem value="monthly">Monthly</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
             </Grid>
           </Paper>
         </Grid>
@@ -205,7 +318,8 @@ const ChoreManagement = () => {
                   p: 2, 
                   mb: 2, 
                   border: '1px solid #e0e0e0', 
-                  borderRadius: 1 
+                  borderRadius: 1,
+                  backgroundColor: chore.status === 'completed' ? '#f5f5f5' : 'inherit'
                 }}
               >
                 <Grid container spacing={2} alignItems="center">
@@ -214,32 +328,49 @@ const ChoreManagement = () => {
                     <Typography variant="body2" color="textSecondary">
                       {chore.description}
                     </Typography>
+                    {role === 'parent' && (
+                      <Typography variant="body2">
+                        Assigned to: {familyMembers.find(m => m.id === chore.assignedTo)?.displayName || 'Unknown'}
+                      </Typography>
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={3}>
                     <Typography variant="body2">
-                      Points: {chore.points}
+                      Reward: ${chore.reward?.toFixed(2)}
                     </Typography>
                     <Typography variant="body2">
                       Status: {chore.status}
                     </Typography>
+                    {chore.timeframe === 'daily' && (
+                      <Typography variant="body2">
+                        Days: {Object.entries(chore.scheduledDays || {})
+                          .filter(([, checked]) => checked)
+                          .map(([day]) => day)
+                          .join(', ')}
+                      </Typography>
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={3}>
                     <Box display="flex" gap={1}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => handleOpenDialog(chore)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        onClick={() => handleDelete(chore.id)}
-                      >
-                        Delete
-                      </Button>
+                      {role === 'parent' && (
+                        <>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => handleOpenDialog(chore)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            onClick={() => handleDelete(chore.id)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
                       {chore.status === 'pending' && (
                         <Button
                           size="small"
@@ -247,7 +378,7 @@ const ChoreManagement = () => {
                           color="primary"
                           onClick={() => handleMarkComplete(chore.id)}
                         >
-                          Complete
+                          Mark Complete
                         </Button>
                       )}
                       {chore.status === 'completed' && role === 'parent' && (
@@ -275,79 +406,129 @@ const ChoreManagement = () => {
                 </Grid>
               </Box>
             ))}
+            {chores.length === 0 && (
+              <Box sx={{ textAlign: 'center', py: 3 }}>
+                <Typography variant="body1" color="textSecondary">
+                  {role === 'parent' 
+                    ? 'No chores created yet. Click "Add New Chore" to get started.'
+                    : 'No chores assigned to you yet.'
+                  }
+                </Typography>
+              </Box>
+            )}
           </Paper>
         </Grid>
       </Grid>
 
-      {/* Add/Edit Chore Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle>
-          {selectedChore ? 'Edit Chore' : 'Add New Chore'}
-        </DialogTitle>
-        <DialogContent>
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Title"
-                  value={choreForm.title}
-                  onChange={(e) => setChoreForm({ ...choreForm, title: e.target.value })}
-                  required
-                />
+      {/* Add/Edit Chore Dialog - Only for parents */}
+      {role === 'parent' && (
+        <Dialog 
+          open={openDialog} 
+          onClose={handleCloseDialog}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            {selectedChore ? 'Edit Chore' : 'Add New Chore'}
+          </DialogTitle>
+          <DialogContent>
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Title"
+                    value={choreForm.title}
+                    onChange={(e) => setChoreForm({ ...choreForm, title: e.target.value })}
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Description"
+                    value={choreForm.description}
+                    onChange={(e) => setChoreForm({ ...choreForm, description: e.target.value })}
+                    multiline
+                    rows={3}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Reward"
+                    type="number"
+                    value={choreForm.reward}
+                    onChange={(e) => setChoreForm({ ...choreForm, reward: e.target.value })}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                    }}
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Timeframe</InputLabel>
+                    <Select
+                      value={choreForm.timeframe}
+                      label="Timeframe"
+                      onChange={(e) => setChoreForm({ ...choreForm, timeframe: e.target.value })}
+                    >
+                      <MenuItem value="daily">Daily</MenuItem>
+                      <MenuItem value="weekly">Weekly</MenuItem>
+                      <MenuItem value="monthly">Monthly</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Assign To</InputLabel>
+                    <Select
+                      value={choreForm.assignedTo}
+                      label="Assign To"
+                      onChange={(e) => setChoreForm({ ...choreForm, assignedTo: e.target.value })}
+                      required
+                    >
+                      {familyMembers.map((member) => (
+                        <MenuItem key={member.id} value={member.id}>
+                          {member.displayName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                {choreForm.timeframe === 'daily' && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Schedule Days
+                    </Typography>
+                    <FormGroup row>
+                      {DAYS_OF_WEEK.map((day) => (
+                        <FormControlLabel
+                          key={day}
+                          control={
+                            <Checkbox
+                              checked={choreForm.scheduledDays[day]}
+                              onChange={() => handleDayToggle(day)}
+                            />
+                          }
+                          label={day}
+                        />
+                      ))}
+                    </FormGroup>
+                  </Grid>
+                )}
               </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  value={choreForm.description}
-                  onChange={(e) => setChoreForm({ ...choreForm, description: e.target.value })}
-                  multiline
-                  rows={3}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Points"
-                  type="number"
-                  value={choreForm.points}
-                  onChange={(e) => setChoreForm({ ...choreForm, points: parseInt(e.target.value) })}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Timeframe</InputLabel>
-                  <Select
-                    value={choreForm.timeframe}
-                    label="Timeframe"
-                    onChange={(e) => setChoreForm({ ...choreForm, timeframe: e.target.value })}
-                  >
-                    <MenuItem value="daily">Daily</MenuItem>
-                    <MenuItem value="weekly">Weekly</MenuItem>
-                    <MenuItem value="monthly">Monthly</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Assigned To (User ID)"
-                  value={choreForm.assignedTo}
-                  onChange={(e) => setChoreForm({ ...choreForm, assignedTo: e.target.value })}
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
-            {selectedChore ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>Cancel</Button>
+            <Button onClick={handleSubmit} variant="contained" color="primary">
+              {selectedChore ? 'Update' : 'Create'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Container>
   );
 };

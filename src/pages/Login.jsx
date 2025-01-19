@@ -31,8 +31,10 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    dispatch(setError(''));
+    dispatch(setLoading(true));
+
     try {
-      dispatch(setLoading(true));
       let user;
       
       if (isRegistering) {
@@ -56,11 +58,16 @@ const Login = () => {
 
       dispatch(setUser(user));
       dispatch(setRole(user.role));
-      console.log('User successfully logged in with role:', user.role);
-      navigate('/dashboard');
+      
+      if (user.requiresPasswordChange) {
+        navigate('/password-reset');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       console.error('Login/Register error:', err);
       dispatch(setError(err.message));
+      dispatch(setLoading(false));
     }
   };
 

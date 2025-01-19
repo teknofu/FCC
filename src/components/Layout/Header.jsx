@@ -76,22 +76,13 @@ const Header = () => {
                 Chores
               </Button>
               {user?.role === 'parent' && (
-                <>
-                  <Button
-                    color="inherit"
-                    component={Link}
-                    to="/family"
-                  >
-                    Family
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={Link}
-                    to="/chore-management"
-                  >
-                    Manage Chores
-                  </Button>
-                </>
+                <Button
+                  color="inherit"
+                  component={Link}
+                  to="/family"
+                >
+                  Family
+                </Button>
               )}
             </Box>
             <IconButton
