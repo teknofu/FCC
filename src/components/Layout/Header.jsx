@@ -1,29 +1,26 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   AppBar,
+  Box,
   Toolbar,
-  Typography,
-  Button,
   IconButton,
+  Typography,
   Menu,
   MenuItem,
-  Box,
-  Link
+  Button,
+  Avatar,
 } from '@mui/material';
-import {
-  Menu as MenuIcon,
-  AccountCircle as AccountIcon,
-  People as FamilyIcon
-} from '@mui/icons-material';
+import { AccountCircle } from '@mui/icons-material';
 import { logout } from '../../store/slices/authSlice';
 import { logoutUser } from '../../services/auth';
 
+// Header component for navigation and user menu
 const Header = () => {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isAuthenticated, user } = useSelector(state => state.auth);
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleMenu = (event) => {
@@ -34,35 +31,30 @@ const Header = () => {
     setAnchorEl(null);
   };
 
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     try {
-      await logoutUser();
-      dispatch(logout());
+      await logoutUser(); // Firebase logout
+      dispatch(logout()); // Redux state cleanup
+      handleClose();
       navigate('/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }
+  };
+
+  const handleProfile = () => {
+    navigate('/profile');
     handleClose();
   };
 
   return (
     <AppBar position="static">
       <Toolbar>
-        <IconButton
-          size="large"
-          edge="start"
-          color="inherit"
-          aria-label="menu"
-          sx={{ mr: 2 }}
-        >
-          <MenuIcon />
-        </IconButton>
-        <Typography
-          variant="h6"
-          component="div"
-          sx={{ flexGrow: 1, cursor: 'pointer' }}
-          onClick={() => navigate('/')}
-        >
+        <Typography variant="h6" component={Link} to="/" sx={{ 
+          flexGrow: 1, 
+          textDecoration: 'none',
+          color: 'inherit'
+        }}>
           Family Chore Chart
         </Typography>
 
@@ -83,7 +75,7 @@ const Header = () => {
               >
                 Chores
               </Button>
-              {user.role === 'parent' && (
+              {user?.role === 'parent' && (
                 <>
                   <Button
                     color="inherit"
@@ -104,13 +96,14 @@ const Header = () => {
             </Box>
             <IconButton
               size="large"
-              aria-label="account"
-              aria-controls="menu-appbar"
-              aria-haspopup="true"
               onClick={handleMenu}
               color="inherit"
             >
-              <AccountIcon />
+              {user?.photoURL ? (
+                <Avatar src={user.photoURL} alt={user.displayName} />
+              ) : (
+                <AccountCircle />
+              )}
             </IconButton>
             <Menu
               id="menu-appbar"
@@ -127,14 +120,16 @@ const Header = () => {
               open={Boolean(anchorEl)}
               onClose={handleClose}
             >
-              <MenuItem disabled>
-                {user?.displayName || user?.email}
-              </MenuItem>
-              <MenuItem onClick={handleLogout}>Logout</MenuItem>
+              <MenuItem onClick={handleProfile}>Profile</MenuItem>
+              <MenuItem onClick={handleSignOut}>Sign Out</MenuItem>
             </Menu>
           </>
         ) : (
-          <Button color="inherit" onClick={() => navigate('/login')}>
+          <Button 
+            color="inherit" 
+            component={Link} 
+            to="/login"
+          >
             Login
           </Button>
         )}
