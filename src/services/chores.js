@@ -10,7 +10,8 @@ import {
   deleteDoc,
   Timestamp,
   orderBy,
-  or
+  or,
+  getDoc
 } from 'firebase/firestore';
 
 /**
@@ -177,14 +178,34 @@ export const deleteChore = async (choreId) => {
 export const markChoreComplete = async (choreId, userId) => {
   try {
     const choreRef = doc(db, 'chores', choreId);
+    
+    // First, get the current chore to validate
+    const choreDoc = await getDoc(choreRef);
+    if (!choreDoc.exists()) {
+      throw new Error('Chore not found');
+    }
+    
+    const choreData = choreDoc.data();
+    
+    // Validate that the chore is assigned to the user
+    if (choreData.assignedTo !== userId) {
+      throw new Error('Not authorized to mark this chore complete');
+    }
+    
+    // Only update status, completedAt, and updatedAt
     const updates = {
       status: 'completed',
-      completedBy: userId,
       completedAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
+    
     await updateDoc(choreRef, updates);
-    return { id: choreId, ...updates };
+    
+    return { 
+      id: choreId, 
+      ...updates,
+      ...choreData
+    };
   } catch (error) {
     console.error('Error marking chore complete:', error);
     throw error;

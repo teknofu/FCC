@@ -26,15 +26,22 @@ export function AuthProvider({ children }) {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const userData = {
-            ...user,
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
             ...userDoc.data()
           };
           setCurrentUser(userData);
           dispatch(setUser(userData));
           dispatch(setRole(userData.role || null));
         } else {
-          setCurrentUser(user);
-          dispatch(setUser(user));
+          const serializedUser = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName
+          };
+          setCurrentUser(serializedUser);
+          dispatch(setUser(serializedUser));
         }
       } else {
         setCurrentUser(null);
