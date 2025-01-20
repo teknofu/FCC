@@ -5,6 +5,8 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { useDispatch } from 'react-redux';
+import { setUser, setRole } from '../store/slices/authSlice';
 
 const AuthContext = createContext();
 
@@ -15,6 +17,7 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -22,21 +25,27 @@ export function AuthProvider({ children }) {
         // Get additional user data from Firestore
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
-          setCurrentUser({
+          const userData = {
             ...user,
             ...userDoc.data()
-          });
+          };
+          setCurrentUser(userData);
+          dispatch(setUser(userData));
+          dispatch(setRole(userData.role || null));
         } else {
           setCurrentUser(user);
+          dispatch(setUser(user));
         }
       } else {
         setCurrentUser(null);
+        dispatch(setUser(null));
+        dispatch(setRole(null));
       }
       setLoading(false);
     });
 
     return unsubscribe;
-  }, []);
+  }, [dispatch]);
 
   const signOut = () => {
     return firebaseSignOut(auth);

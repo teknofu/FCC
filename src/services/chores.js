@@ -48,7 +48,6 @@ export const createChore = async (choreData) => {
  */
 export const getChores = async (parentId) => {
   try {
-    console.log('Getting chores for parent:', parentId);
     const choresRef = collection(db, 'chores');
     const q = query(
       choresRef,
@@ -60,11 +59,11 @@ export const getChores = async (parentId) => {
     );
     
     const querySnapshot = await getDocs(q);
-    console.log('Found chores:', querySnapshot.size);
     
     // Map the results and ensure createdBy is set
     const chores = querySnapshot.docs.map(doc => {
       const data = doc.data();
+      
       // If createdBy is not set, update it
       if (!data.createdBy) {
         const choreRef = doc.ref;
@@ -94,22 +93,33 @@ export const getChores = async (parentId) => {
  * @returns {Promise<Array>} Array of chores
  */
 export const getAssignedChores = async (childId) => {
+  // Validate input
+  if (!childId) {
+    console.error('getAssignedChores called with undefined childId');
+    throw new Error('Child ID is required to fetch assigned chores');
+  }
+
   try {
-    console.log('Getting assigned chores for child:', childId);
     const choresRef = collection(db, 'chores');
     const q = query(
       choresRef,
       where('assignedTo', '==', childId),
       orderBy('createdAt', 'desc')
     );
-    const querySnapshot = await getDocs(q);
-    console.log('Found assigned chores:', querySnapshot.size);
     
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      reward: parseFloat(doc.data().reward) || 0
-    }));
+    const querySnapshot = await getDocs(q);
+    
+    const chores = querySnapshot.docs.map(doc => {
+      const choreData = doc.data();
+      
+      return {
+        id: doc.id,
+        ...choreData,
+        reward: parseFloat(choreData.reward) || 0
+      };
+    });
+    
+    return chores;
   } catch (error) {
     console.error('Error getting assigned chores:', error);
     throw error;
@@ -212,7 +222,6 @@ export const verifyChore = async (choreId, isApproved, verifiedBy) => {
  */
 export const getChildStats = async (childId) => {
   try {
-    console.log('Getting stats for child:', childId);
     const choresRef = collection(db, 'chores');
     const q = query(
       choresRef,
@@ -220,7 +229,6 @@ export const getChildStats = async (childId) => {
       orderBy('createdAt', 'desc')
     );
     const querySnapshot = await getDocs(q);
-    console.log('Found chores for stats:', querySnapshot.size);
     
     const chores = querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -243,7 +251,6 @@ export const getChildStats = async (childId) => {
         .reduce((sum, c) => sum + (c.reward || 0), 0)
     };
     
-    console.log('Child stats:', stats);
     return stats;
   } catch (error) {
     console.error('Error getting child stats:', error);

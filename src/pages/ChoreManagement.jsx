@@ -69,42 +69,73 @@ const ChoreManagement = () => {
   });
 
   useEffect(() => {
-    if (user?.uid) {
+    // Only load chores if user exists and has a role
+    if (user && role) {
       loadChores();
+      
       if (role === 'parent') {
         loadFamilyMembers();
       }
+    } else {
+      console.warn('Skipping chore load - missing user or role');
     }
-  }, [user, role]);
+  }, [role, user]);
 
   const loadChores = async () => {
     try {
       setLoading(true);
-      setError('');
-      let choresList;
-      if (role === 'parent') {
-        // Parents see all chores they created
-        choresList = await getChores(user.uid);
-      } else {
-        // Children only see chores assigned to them
-        choresList = await getAssignedChores(user.uid);
+      
+      // Extract UID from user object
+      const userId = user?.uid || user?.user?.uid;
+
+      if (!userId) {
+        throw new Error('Could not extract valid User ID');
       }
-      setChores(choresList);
+
+      let fetchedChores = [];
+      
+      if (role === 'child') {
+        fetchedChores = await getAssignedChores(userId);
+      } else {
+        fetchedChores = await getChores(userId);
+      }
+
+      // Apply filters
+      let filteredChores = fetchedChores;
+      
+      if (filters.status !== 'all') {
+        filteredChores = filteredChores.filter(chore => 
+          chore.status === filters.status
+        );
+      }
+      
+      if (filters.timeframe !== 'all') {
+        filteredChores = filteredChores.filter(chore => 
+          chore.timeframe === filters.timeframe
+        );
+      }
+      
+      setChores(filteredChores);
+      setLoading(false);
     } catch (error) {
       console.error('Error loading chores:', error);
       setError(error.message || 'Failed to load chores');
-    } finally {
       setLoading(false);
     }
   };
 
   const loadFamilyMembers = async () => {
-    if (role !== 'parent') return;
+    if (role !== 'parent') {
+      alert('Not a parent role. Current role:', role);
+      return;
+    }
     
     try {
       setLoading(true);
       setError('');
+      alert('Loading family members for parent:', user);
       const members = await getFamilyMembers(user.uid);
+      alert('Loaded family members:', members);
       setFamilyMembers(members);
       
       // Load stats for each child
@@ -116,7 +147,7 @@ const ChoreManagement = () => {
       }
       setChildStats(stats);
     } catch (error) {
-      console.error('Error loading family members:', error);
+      alert('Error loading family members:', error);
       setError(error.message || 'Failed to load family members');
     } finally {
       setLoading(false);
@@ -182,7 +213,7 @@ const ChoreManagement = () => {
       handleCloseDialog();
       loadChores();
     } catch (error) {
-      console.error('Error saving chore:', error);
+      alert('Error saving chore:', error);
       setError(error.message || 'Failed to save chore');
     } finally {
       setLoading(false);
@@ -200,7 +231,7 @@ const ChoreManagement = () => {
       await deleteChore(choreId);
       loadChores();
     } catch (error) {
-      console.error('Error deleting chore:', error);
+      alert('Error deleting chore:', error);
       setError(error.message || 'Failed to delete chore');
     } finally {
       setLoading(false);
@@ -214,7 +245,7 @@ const ChoreManagement = () => {
       await markChoreComplete(choreId, user.uid);
       loadChores();
     } catch (error) {
-      console.error('Error marking chore complete:', error);
+      alert('Error marking chore complete:', error);
       setError(error.message || 'Failed to mark chore as complete');
     } finally {
       setLoading(false);
@@ -228,7 +259,7 @@ const ChoreManagement = () => {
       await verifyChore(choreId, isApproved, user.uid);
       loadChores();
     } catch (error) {
-      console.error('Error verifying chore:', error);
+      alert('Error verifying chore:', error);
       setError(error.message || 'Failed to verify chore');
     } finally {
       setLoading(false);

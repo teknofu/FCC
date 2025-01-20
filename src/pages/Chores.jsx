@@ -31,7 +31,8 @@ import {
   deleteChore as deleteChoreAPI,
   getChores,
   markChoreComplete,
-  verifyChore
+  verifyChore,
+  getAssignedChores
 } from '../services/chores';
 
 const Chores = () => {
@@ -49,9 +50,28 @@ const Chores = () => {
   const loadChores = async () => {
     try {
       dispatch(setLoading(true));
-      const fetchedChores = await getChores(filters);
+      let fetchedChores;
+      
+      console.log('Current user details:', { 
+        uid: user.uid, 
+        role: role, 
+        email: user.email 
+      });
+      
+      if (role === 'child') {
+        // For child users, get chores assigned to them
+        console.log('Fetching chores for child user');
+        fetchedChores = await getAssignedChores(user.uid);
+      } else {
+        // For parent users, use the existing getChores method
+        console.log('Fetching chores for parent user');
+        fetchedChores = await getChores(user.uid);
+      }
+      
+      console.log('Fetched chores:', fetchedChores);
       dispatch(setChores(fetchedChores));
     } catch (error) {
+      console.error('Error loading chores:', error);
       dispatch(setError(error.message));
     }
   };
