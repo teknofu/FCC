@@ -127,28 +127,29 @@ const ChoreManagement = () => {
 
   const loadFamilyMembers = async (uid) => {
     if (role !== 'parent') {
-      alert('Not a parent role. Current role:', role);
+      console.warn('Not a parent role');
       return;
     }
     
     try {
       setLoading(true);
       setError('');
-      alert('Loading family members for parent:', user);
       const members = await getFamilyMembers(uid);
-      alert('Loaded family members:', members);
+      console.log(`Loaded ${members.length} family members`);
       setFamilyMembers(members);
       
       // Load stats for each child
       const stats = {};
       for (const member of members) {
         if (member.role === 'child') {
-          stats[member.id] = await getChildStats(member.id);
+          const memberStats = await getChildStats(member.id);
+          console.log(`Loaded stats for child: ${member.id}`, memberStats);
+          stats[member.id] = memberStats;
         }
       }
       setChildStats(stats);
     } catch (error) {
-      alert('Error loading family members:', error);
+      console.error('Error loading family members:', error);
       setError(error.message || 'Failed to load family members');
     } finally {
       setLoading(false);
@@ -204,17 +205,19 @@ const ChoreManagement = () => {
           ...choreForm,
           updatedAt: new Date()
         });
+        console.log(`Chore ${selectedChore.id} updated successfully`);
       } else {
-        await createChore({
+        const newChore = await createChore({
           ...choreForm,
           createdBy: user.uid,
           status: 'pending'
         });
+        console.log(`New chore created with ID: ${newChore.id}`);
       }
       handleCloseDialog();
       loadChores();
     } catch (error) {
-      alert('Error saving chore:', error);
+      console.error('Error in chore submission:', error);
       setError(error.message || 'Failed to save chore');
     } finally {
       setLoading(false);
@@ -232,7 +235,7 @@ const ChoreManagement = () => {
       await deleteChore(choreId);
       loadChores();
     } catch (error) {
-      alert('Error deleting chore:', error);
+      console.error('Error deleting chore:', error);
       setError(error.message || 'Failed to delete chore');
     } finally {
       setLoading(false);
@@ -267,7 +270,7 @@ const ChoreManagement = () => {
       await verifyChore(choreId, isApproved, user.uid);
       loadChores();
     } catch (error) {
-      alert('Error verifying chore:', error);
+      console.error('Error verifying chore:', error);
       setError(error.message || 'Failed to verify chore');
     } finally {
       setLoading(false);
