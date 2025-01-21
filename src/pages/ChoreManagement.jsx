@@ -80,7 +80,60 @@ const ChoreManagement = () => {
         loadFamilyMembers(user.uid);
       }
     }
-  }, [role, user]);
+  }, [role, user, filters.status, filters.timeframe]);
+
+  useEffect(() => {
+    const resetRecurringChores = async () => {
+      // Only run for parents who can manage chores
+      if (role !== 'parent' || !chores.length) return;
+
+      // Get current day
+      const currentDay = new Date().toLocaleString('en-US', { weekday: 'long' });
+
+      // Filter chores that need reset
+      const choresToReset = chores.filter(chore => 
+        // Must be a daily recurring chore
+        chore.timeframe === 'daily' && 
+        // Must be scheduled for today
+        chore.scheduledDays?.[currentDay] === true && 
+        // Must have been verified yesterday or earlier
+        chore.status === 'verified' && 
+        // Check if the last verification was not today
+        new Date(chore.verifiedAt?.toDate?.() || 0).toDateString() !== new Date().toDateString()
+      );
+
+      // Reset each chore that meets the criteria
+      for (const choreToReset of choresToReset) {
+        try {
+          await updateChore(choreToReset.id, {
+            ...choreToReset,
+            status: 'pending',
+            completedAt: null,
+            verifiedAt: null,
+            verifiedBy: null,
+            updatedAt: new Date()
+          });
+          console.log(`Reset recurring chore: ${choreToReset.title}`);
+        } catch (error) {
+          console.error(`Failed to reset chore ${choreToReset.id}:`, error);
+        }
+      }
+
+      // Reload chores after reset
+      if (choresToReset.length > 0) {
+        loadChores();
+      }
+    };
+
+    // Run reset logic once per day
+    const lastResetDate = localStorage.getItem('lastChoreResetDate');
+    const today = new Date().toDateString();
+
+    if (lastResetDate !== today) {
+      resetRecurringChores();
+      localStorage.setItem('lastChoreResetDate', today);
+    }
+  }, [chores, role, user]);
 
   const loadChores = async () => {
     try {
@@ -101,6 +154,9 @@ const ChoreManagement = () => {
         fetchedChores = await getChores(userId);
       }
 
+      console.log('Current filters:', filters);
+      console.log('Fetched chores before filtering:', fetchedChores);
+
       // Apply filters
       let filteredChores = fetchedChores;
       
@@ -115,6 +171,8 @@ const ChoreManagement = () => {
           chore.timeframe === filters.timeframe
         );
       }
+      
+      console.log('Filtered chores:', filteredChores);
       
       setChores(filteredChores);
       setLoading(false);
@@ -287,6 +345,32 @@ const ChoreManagement = () => {
     }));
   };
 
+  const handleManualChoreReset = async (choreId) => {
+    try {
+      setLoading(true);
+      setError('');
+
+      // Perform reset directly to pending status
+      await updateChore(choreId, {
+        status: 'pending',
+        completedAt: null,
+        verifiedAt: null,
+        verifiedBy: null,
+        updatedAt: new Date()
+      });
+
+      // Reload chores to reflect changes
+      await loadChores();
+
+      console.log(`Manually reset chore to pending: ${choreId}`);
+    } catch (error) {
+      console.error('Error manually resetting chore:', error);
+      setError(error.message || 'Failed to reset chore');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const showAddButton = role === 'parent';
 
   const handleRefresh = () => {
@@ -416,6 +500,16 @@ const ChoreManagement = () => {
                             >
                               Delete
                             </Button>
+                            {(chore.status === 'verified' || chore.status === 'completed') && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="warning"
+                                onClick={() => handleManualChoreReset(chore.id)}
+                              >
+                                Reset
+                              </Button>
+                            )}
                           </>
                         )}
                         {chore.status === 'pending' && (
