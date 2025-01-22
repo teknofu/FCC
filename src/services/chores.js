@@ -139,11 +139,17 @@ export const updateChore = async (choreId, choreData) => {
     const updates = {
       title: choreData.title,
       description: choreData.description,
-      reward: parseFloat(choreData.reward) || 0,
+      reward: choreData.resetRewards ? 0 : (parseFloat(choreData.reward) || 0),
       timeframe: choreData.timeframe,
       assignedTo: choreData.assignedTo,
       scheduledDays: choreData.scheduledDays || {},
-      updatedAt: Timestamp.now()
+      status: choreData.status || 'pending',
+      completedAt: choreData.completedAt || null,
+      verifiedAt: choreData.verifiedAt || null,
+      verifiedBy: choreData.verifiedBy || null,
+      updatedAt: Timestamp.now(),
+      // Only update rewardsResetDate if rewards are manually reset
+      ...(choreData.resetRewards && { rewardsResetDate: Timestamp.now() })
     };
     await updateDoc(choreRef, updates);
     return { id: choreId, ...updates };
