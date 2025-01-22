@@ -1,14 +1,15 @@
 ﻿Product Requirements Document (PRD)
-Product Name: Family Chore Chart
-Date: 1-18-2025
-Version: 1.0
+Product Name: Family Chore Chart App
+
 1. Introduction
-The Family Chore Chart is a web application designed to streamline the management and tracking of household chores. The app will provide a centralized platform for parents to assign chores, children to mark chores as complete, and parents to authenticate and reward completed chores.
+The Family Chore Chart is a web application designed to streamline the management and tracking of household chores. The app will provide a centralized platform for parents to assign chores, children to mark chores as complete, and parents to approve and reward completed chores.
+
 2. Goals and Objectives
 * Simplify chore management for parents.
 * Increase children's participation and accountability in household chores.
 * Promote a fair and transparent system for assigning and rewarding chores.
 * Foster a sense of responsibility and teamwork within the family.
+
 3. Target Audience
 The primary target audience for this app is families with children who are responsible for completing household chores. The app is designed to be accessible and engaging for both parents and children.
 4. User Roles and Permissions
@@ -20,49 +21,58 @@ The app will have two main user roles:
    * Set the monetary value of each chore.
    * Approve or reject completed chores.
    * Track the chore completion progress of each child.
-   * Manage the reward system and track earnings for each child.
+   * Manage and track earnings for each child.
    * Schedule chores, set reminders, and communicate with children through the app.
-   * Child:
+   
+* Child:
 
       * View assigned chores.
       * Mark chores as complete.
       * Track their chore completion progress.
       * View their earnings.
       * Request changes to assigned chores.
+
 5. Functional Requirements
-      * User Authentication:
+      
+* User Authentication:
 
          * Secure login system for both parent and child users.
          * Password reset functionality.
-         * Chore Management:
+
+* Chore Management:
 
             * Create, edit, and delete chores.
             * Assign chores to specific children.
             * Categorize chores as daily, weekly, or one-off.
             * Set a monetary value for each chore.
-            * Chore Completion Tracking:
+            
+* Chore Completion Tracking:
 
                * Children can mark chores as complete.
                * Parents can approve or reject completed chores.
                * Visual progress tracking for each child.
-               * Reward System:
+               
+* Reward System:
 
-                  * Monetary reward system for completed chores.
+                  * Monetary value for completed chores.
                   * Track earnings for each child.
-                  * Additional Features:
+                  
+* Additional Features:
 
                      * Chore scheduling and reminders.
                      * In-app communication between parents and children.
                      * Chore request and approval system for children.
+
 6. User Interface (UI) and User Experience (UX) Requirements
+
                      * The app should have a clean, intuitive, and user-friendly interface.
                      * The design should be visually appealing and engaging for children.
                      * The app should be easy to navigate on a mobile phone, as this is the primary use case.
                      * The app should be responsive and perform well on various devices.
+
 7. Technical Requirements
                      * The app should be developed as a web application accessible through a mobile browser.
-                     * The backend can be developed using a suitable framework (e.g., Node.js, Python/Django, Ruby on Rails).
-                     * The frontend can be developed using a JavaScript framework (e.g., React, Angular, Vue.js).
+                     * The interface will be developed using vite+react and firebase.
                      * The app should be hosted on a reliable and scalable platform.
 8. Success Metrics
                      * Number of active users.
