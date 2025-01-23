@@ -8,21 +8,33 @@ import {
   doc,
   updateDoc,
   deleteDoc,
-  Timestamp,
+  serverTimestamp,
   orderBy,
   or,
-  getDoc
+  getDoc,
+  runTransaction,
+  increment,
+  writeBatch,
+  limit
 } from 'firebase/firestore';
+import { createSchedule, getScheduleForChore, updateScheduleNextDue } from './schedules';
+import { recordEarning } from './allowances';
 
 /**
  * Create a new chore
  * @param {Object} choreData - The chore data
+ * @param {Object} [schedulePattern] Optional schedule pattern for recurring chores
  * @returns {Promise<Object>} The created chore with ID
  */
-export const createChore = async (choreData) => {
+export const createChore = async (choreData, schedulePattern = null) => {
+  const batch = writeBatch(db);
+
   try {
-    const choresRef = collection(db, 'chores');
-    const newChore = {
+    // Create chore document
+    const choreRef = doc(collection(db, 'chores'));
+    const timestamp = serverTimestamp();
+    
+    const chore = {
       title: choreData.title,
       description: choreData.description,
       reward: parseFloat(choreData.reward) || 0,
@@ -31,11 +43,25 @@ export const createChore = async (choreData) => {
       createdBy: choreData.createdBy,
       status: 'pending',
       scheduledDays: choreData.scheduledDays || {},
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
-    const docRef = await addDoc(choresRef, newChore);
-    return { id: docRef.id, ...newChore };
+
+    batch.set(choreRef, chore);
+
+    // If recurring, create schedule
+    if (schedulePattern) {
+      const schedule = await createSchedule(choreRef.id, schedulePattern);
+      chore.scheduleId = schedule.id;
+      batch.update(choreRef, { scheduleId: schedule.id });
+    }
+
+    await batch.commit();
+
+    return {
+      id: choreRef.id,
+      ...chore
+    };
   } catch (error) {
     console.error('Error creating chore:', error);
     throw error;
@@ -49,39 +75,22 @@ export const createChore = async (choreData) => {
  */
 export const getChores = async (parentId) => {
   try {
-    const choresRef = collection(db, 'chores');
     const q = query(
-      choresRef,
-      or(
-        where('createdBy', '==', parentId),
-        where('createdBy', '==', null)
-      ),
+      collection(db, 'chores'),
+      where('createdBy', '==', parentId),
       orderBy('createdAt', 'desc')
     );
-    
-    const querySnapshot = await getDocs(q);
-    
-    // Map the results and ensure createdBy is set
-    const chores = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      
-      // If createdBy is not set, update it
-      if (!data.createdBy) {
-        const choreRef = doc.ref;
-        updateDoc(choreRef, { 
-          createdBy: parentId,
-          updatedAt: Timestamp.now()
-        });
-      }
-      return {
-        id: doc.id,
-        ...data,
-        createdBy: data.createdBy || parentId,
-        reward: parseFloat(data.reward) || 0
-      };
-    });
-    
-    return chores;
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      uid: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate(),
+      completedAt: doc.data().completedAt?.toDate(),
+      verifiedAt: doc.data().verifiedAt?.toDate()
+    }));
   } catch (error) {
     console.error('Error getting chores:', error);
     throw error;
@@ -94,33 +103,23 @@ export const getChores = async (parentId) => {
  * @returns {Promise<Array>} Array of chores
  */
 export const getAssignedChores = async (childId) => {
-  // Validate input
-  if (!childId) {
-    console.error('getAssignedChores called with undefined childId');
-    throw new Error('Child ID is required to fetch assigned chores');
-  }
-
   try {
-    const choresRef = collection(db, 'chores');
     const q = query(
-      choresRef,
+      collection(db, 'chores'),
       where('assignedTo', '==', childId),
       orderBy('createdAt', 'desc')
     );
-    
-    const querySnapshot = await getDocs(q);
-    
-    const chores = querySnapshot.docs.map(doc => {
-      const choreData = doc.data();
-      
-      return {
-        id: doc.id,
-        ...choreData,
-        reward: parseFloat(choreData.reward) || 0
-      };
-    });
-    
-    return chores;
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      uid: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate(),
+      completedAt: doc.data().completedAt?.toDate(),
+      verifiedAt: doc.data().verifiedAt?.toDate()
+    }));
   } catch (error) {
     console.error('Error getting assigned chores:', error);
     throw error;
@@ -147,9 +146,9 @@ export const updateChore = async (choreId, choreData) => {
       completedAt: choreData.completedAt || null,
       verifiedAt: choreData.verifiedAt || null,
       verifiedBy: choreData.verifiedBy || null,
-      updatedAt: Timestamp.now(),
+      updatedAt: serverTimestamp(),
       // Only update rewardsResetDate if rewards are manually reset
-      ...(choreData.resetRewards && { rewardsResetDate: Timestamp.now() })
+      ...(choreData.resetRewards && { rewardsResetDate: serverTimestamp() })
     };
     await updateDoc(choreRef, updates);
     return { id: choreId, ...updates };
@@ -184,34 +183,22 @@ export const deleteChore = async (choreId) => {
 export const markChoreComplete = async (choreId, userId) => {
   try {
     const choreRef = doc(db, 'chores', choreId);
+    const choreSnapshot = await getDoc(choreRef);
     
-    // First, get the current chore to validate
-    const choreDoc = await getDoc(choreRef);
-    if (!choreDoc.exists()) {
+    if (!choreSnapshot.exists()) {
       throw new Error('Chore not found');
     }
     
-    const choreData = choreDoc.data();
+    const choreData = choreSnapshot.data();
     
-    // Validate that the chore is assigned to the user
-    if (choreData.assignedTo !== userId) {
-      throw new Error('Not authorized to mark this chore complete');
-    }
-    
-    // Only update status, completedAt, and updatedAt
-    const updates = {
+    // Update chore status
+    await updateDoc(choreRef, {
       status: 'completed',
-      completedAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    };
+      completedBy: userId,
+      completedAt: serverTimestamp()
+    });
     
-    await updateDoc(choreRef, updates);
-    
-    return { 
-      id: choreId, 
-      ...updates,
-      ...choreData
-    };
+    return { id: choreId, ...choreData, status: 'completed' };
   } catch (error) {
     console.error('Error marking chore complete:', error);
     throw error;
@@ -219,23 +206,50 @@ export const markChoreComplete = async (choreId, userId) => {
 };
 
 /**
- * Verify or reject a completed chore
+ * Verify a completed chore
  * @param {string} choreId - The chore ID
  * @param {boolean} isApproved - Whether the chore is approved
- * @param {string} verifiedBy - The user verifying the chore
- * @returns {Promise<Object>} The updated chore
+ * @returns {Promise<void>}
  */
-export const verifyChore = async (choreId, isApproved, verifiedBy) => {
+export const verifyChore = async (choreId, isApproved) => {
+  const batch = writeBatch(db);
+
   try {
     const choreRef = doc(db, 'chores', choreId);
-    const updates = {
+    const choreDoc = await getDoc(choreRef);
+
+    if (!choreDoc.exists()) {
+      throw new Error('Chore not found');
+    }
+
+    const chore = choreDoc.data();
+    const timestamp = serverTimestamp();
+
+    if (isApproved) {
+      // Record earning
+      await recordEarning({
+        childId: chore.assignedTo,
+        amount: parseFloat(chore.reward) || 0,
+        source: {
+          type: 'chore',
+          referenceId: choreId
+        }
+      });
+
+      // Update schedule if recurring
+      if (chore.scheduleId) {
+        await updateScheduleNextDue(chore.scheduleId);
+      }
+    }
+
+    // Update chore status
+    batch.update(choreRef, {
       status: isApproved ? 'verified' : 'rejected',
-      verifiedBy,
-      verifiedAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    };
-    await updateDoc(choreRef, updates);
-    return { id: choreId, ...updates };
+      verifiedAt: timestamp,
+      updatedAt: timestamp
+    });
+
+    await batch.commit();
   } catch (error) {
     console.error('Error verifying chore:', error);
     throw error;
@@ -250,18 +264,33 @@ export const verifyChore = async (choreId, isApproved, verifiedBy) => {
 export const getChildStats = async (childId) => {
   try {
     const choresRef = collection(db, 'chores');
-    const q = query(
+    const rewardsRef = collection(db, 'rewards');
+
+    // Query chores for the child
+    const choresQuery = query(
       choresRef,
       where('assignedTo', '==', childId),
       orderBy('createdAt', 'desc')
     );
-    const querySnapshot = await getDocs(q);
+    const choresSnapshot = await getDocs(choresQuery);
     
-    const chores = querySnapshot.docs.map(doc => ({
+    const chores = choresSnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data(),
-      reward: parseFloat(doc.data().reward) || 0
+      ...doc.data()
     }));
+
+    // Query rewards for the child
+    const rewardsQuery = query(
+      rewardsRef,
+      where('childId', '==', childId)
+    );
+    const rewardsSnapshot = await getDocs(rewardsQuery);
+    
+    // Calculate total rewards from rewards collection
+    const totalRewardsEarned = rewardsSnapshot.docs.reduce((sum, doc) => {
+      const reward = doc.data();
+      return sum + (parseFloat(reward.amount) || 0);
+    }, 0);
 
     // Calculate stats
     const now = new Date();
@@ -273,14 +302,51 @@ export const getChildStats = async (childId) => {
         c.status === 'verified' && 
         c.verifiedAt?.toDate() >= weekStart
       ).length,
-      totalRewardsEarned: chores
-        .filter(c => c.status === 'verified')
-        .reduce((sum, c) => sum + (c.reward || 0), 0)
+      totalRewardsEarned
     };
     
     return stats;
   } catch (error) {
     console.error('Error getting child stats:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all chores for a child
+ * @param {string} childId - The child's user ID
+ * @param {string} [status] - Optional status filter
+ * @returns {Promise<Array>} List of chores
+ */
+export const getChildChores = async (childId, status = null) => {
+  try {
+    const choresRef = collection(db, 'chores');
+    let q = query(
+      choresRef,
+      where('assignedTo', '==', childId),
+      orderBy('createdAt', 'desc')
+    );
+
+    if (status) {
+      q = query(q, where('status', '==', status));
+    }
+
+    const snapshot = await getDocs(q);
+    const chores = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Fetch schedule details for recurring chores
+    for (const chore of chores) {
+      if (chore.scheduleId) {
+        chore.schedule = await getScheduleForChore(chore.id);
+      }
+    }
+
+    return chores;
+  } catch (error) {
+    console.error('Error getting child chores:', error);
     throw error;
   }
 };

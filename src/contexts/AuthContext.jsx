@@ -24,25 +24,20 @@ export function AuthProvider({ children }) {
       if (user) {
         // Get additional user data from Firestore
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            ...userDoc.data()
-          };
-          setCurrentUser(userData);
-          dispatch(setUser(userData));
-          dispatch(setRole(userData.role || null));
-        } else {
-          const serializedUser = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName
-          };
-          setCurrentUser(serializedUser);
-          dispatch(setUser(serializedUser));
-        }
+        
+        // Create a serializable user object with only the data we need
+        const serializedUser = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          emailVerified: user.emailVerified,
+          // Add any other primitive fields you need from the user object
+          ...(userDoc.exists() ? userDoc.data() : {})
+        };
+
+        setCurrentUser(serializedUser);
+        dispatch(setUser(serializedUser));
+        dispatch(setRole(serializedUser.role || null));
       } else {
         setCurrentUser(null);
         dispatch(setUser(null));

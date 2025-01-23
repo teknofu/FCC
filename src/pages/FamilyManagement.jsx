@@ -24,7 +24,8 @@ import {
   addChildAccount,
   updateChildAccount,
   removeChildAccount,
-  getChildStats
+  subscribeFamilyMembers,
+  subscribeChildStats
 } from '../services/family';
 
 const FamilyManagement = () => {
@@ -43,33 +44,49 @@ const FamilyManagement = () => {
   });
 
   useEffect(() => {
-    if (user?.uid) {
-      loadFamilyMembers();
-    }
-  }, [user]);
+    let unsubscribeMembers = () => {};
+    let unsubscribeStats = {};
 
-  const loadFamilyMembers = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const members = await getFamilyMembers(user.uid);
-      setFamilyMembers(members);
-      
-      // Load stats for each child
-      const stats = {};
-      for (const member of members) {
-        if (member.role === 'child') {
-          stats[member.id] = await getChildStats(member.id);
+    const setupSubscriptions = async () => {
+      if (user?.uid) {
+        try {
+          // Subscribe to family members updates
+          unsubscribeMembers = subscribeFamilyMembers(user.uid, (members) => {
+            setFamilyMembers(members);
+            
+            // Set up or update stats subscriptions for each child
+            members.forEach(member => {
+              if (member.role === 'child' && !unsubscribeStats[member.id]) {
+                unsubscribeStats[member.id] = subscribeChildStats(member.id, (stats) => {
+                  setChildStats(prev => ({
+                    ...prev,
+                    [member.id]: {
+                      ...prev[member.id],
+                      totalRewardsEarned: stats.balance
+                    }
+                  }));
+                });
+              }
+            });
+
+            setLoading(false);
+          });
+        } catch (error) {
+          console.error('Error setting up subscriptions:', error);
+          setError(error.message || 'Failed to load family members');
+          setLoading(false);
         }
       }
-      setChildStats(stats);
-    } catch (error) {
-      console.error('Error loading family members:', error);
-      setError(error.message || 'Failed to load family members');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    setupSubscriptions();
+
+    // Cleanup subscriptions
+    return () => {
+      unsubscribeMembers();
+      Object.values(unsubscribeStats).forEach(unsubscribe => unsubscribe());
+    };
+  }, [user]);
 
   const handleOpenDialog = (child = null) => {
     if (child) {
@@ -114,7 +131,6 @@ const FamilyManagement = () => {
         await addChildAccount(user.uid, formData);
       }
       handleCloseDialog();
-      loadFamilyMembers();
     } catch (error) {
       console.error('Error saving child account:', error);
       setError(error.message || 'Failed to save child account');
@@ -128,7 +144,6 @@ const FamilyManagement = () => {
 
     try {
       await removeChildAccount(childId);
-      loadFamilyMembers();
     } catch (error) {
       console.error('Error removing child account:', error);
       setError(error.message || 'Failed to remove child account');
@@ -184,15 +199,12 @@ const FamilyManagement = () => {
                     Role: {member.role}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
-                    Earned: ${member.earnings?.toFixed(2) || '0.00'}
+                    Earned: ${childStats[member.id]?.totalRewardsEarned?.toFixed(2) || '0.00'}
                   </Typography>
                   {childStats[member.id] && (
                     <Box mt={2}>
                       <Typography variant="body2">
                         Chores Completed: {childStats[member.id].totalChoresCompleted}
-                      </Typography>
-                      <Typography variant="body2">
-                        Rewards Earned: ${childStats[member.id].totalRewardsEarned?.toFixed(2) || '0.00'}
                       </Typography>
                       <Typography variant="body2">
                         This Week: {childStats[member.id].weeklyChoresCompleted} chores

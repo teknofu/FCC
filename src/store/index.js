@@ -3,7 +3,7 @@ import authReducer from './slices/authSlice';
 import choresReducer from './slices/choresSlice';
 import rewardsReducer from './slices/rewardsSlice';
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
     auth: authReducer,
     chores: choresReducer,
@@ -12,12 +12,22 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // Ignore these action types
-        ignoredActions: ['auth/setUser'],
+        // Ignore these specific action types
+        ignoredActions: [],
         // Ignore these field paths in all actions
-        ignoredActionPaths: ['payload.createdAt', 'payload.updatedAt'],
+        ignoredActionPaths: [
+          'payload.createdAt',
+          'payload.updatedAt',
+          'payload.lastLoginAt',
+          'payload.metadata'
+        ],
         // Ignore these paths in the state
-        ignoredPaths: ['auth.user.createdAt', 'auth.user.updatedAt']
+        ignoredPaths: [
+          'auth.user.createdAt',
+          'auth.user.updatedAt',
+          'auth.user.lastLoginAt',
+          'auth.user.metadata'
+        ]
       }
     })
 });

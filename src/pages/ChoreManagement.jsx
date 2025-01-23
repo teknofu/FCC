@@ -207,10 +207,10 @@ const ChoreManagement = () => {
       // Load stats for each child
       const stats = {};
       for (const member of members) {
-        if (member.role === "child") {
-          const memberStats = await getChildStats(member.id);
-          console.log(`Loaded stats for child: ${member.id}`, memberStats);
-          stats[member.id] = memberStats;
+        if (member.role === "child" && member.uid) {
+          const memberStats = await getChildStats(member.uid);
+          console.log(`Loaded stats for child: ${member.uid}`, memberStats);
+          stats[member.uid] = memberStats;
         }
       }
       setChildStats(stats);
@@ -270,28 +270,31 @@ const ChoreManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    if (!choreForm.title || !choreForm.assignedTo) {
+      setError("Title and assigned child are required");
+      return;
+    }
 
     try {
       setLoading(true);
+      setError("");
+
+      const choreData = {
+        ...choreForm,
+        reward: parseFloat(choreForm.reward) || 0,
+        createdBy: user.uid,
+      };
+
       if (selectedChore) {
-        await updateChore(selectedChore.id, {
-          ...choreForm,
-          updatedAt: new Date(),
-        });
-        console.log(`Chore ${selectedChore.id} updated successfully`);
+        await updateChore(selectedChore.id, choreData);
       } else {
-        const newChore = await createChore({
-          ...choreForm,
-          createdBy: user.uid,
-          status: "pending",
-        });
-        console.log(`New chore created with ID: ${newChore.id}`);
+        await createChore(choreData);
       }
+
       handleCloseDialog();
       loadChores();
     } catch (error) {
-      console.error("Error in chore submission:", error);
+      console.error("Error saving chore:", error);
       setError(error.message || "Failed to save chore");
     } finally {
       setLoading(false);
@@ -395,6 +398,39 @@ const ChoreManagement = () => {
     }
   };
 
+  const renderChildSelect = () => (
+    <FormControl fullWidth sx={{ mb: 2 }}>
+      <InputLabel>Assign To</InputLabel>
+      <Select
+        value={choreForm.assignedTo}
+        onChange={(e) =>
+          setChoreForm({ ...choreForm, assignedTo: e.target.value })
+        }
+        label="Assign To"
+        disabled={loading}
+      >
+        {familyMembers
+          .filter((member) => member.role === "child" && member.uid)
+          .map((child) => (
+            <MenuItem key={`child-select-${child.uid}`} value={child.uid}>
+              {child.displayName || child.email || "Unnamed Child"}
+            </MenuItem>
+          ))}
+      </Select>
+    </FormControl>
+  );
+
+  const renderChildStats = (childId) => {
+    const stats = childStats[childId] || {};
+    return (
+      <Box sx={{ mt: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          Completed: {stats.completedCount || 0} | Pending: {stats.pendingCount || 0}
+        </Typography>
+      </Box>
+    );
+  };
+
   const showAddButton = role === "parent";
 
   const handleRefresh = () => {
@@ -496,7 +532,7 @@ const ChoreManagement = () => {
                       {role === "parent" && (
                         <Typography variant="body2">
                           Assigned to:{" "}
-                          {familyMembers.find((m) => m.id === chore.assignedTo)
+                          {familyMembers.find((m) => m.uid === chore.assignedTo)
                             ?.displayName || "Unknown"}
                         </Typography>
                       )}
@@ -675,26 +711,7 @@ const ChoreManagement = () => {
                     </FormControl>
                   </Grid>
                   <Grid item xs={12}>
-                    <FormControl fullWidth>
-                      <InputLabel>Assign To</InputLabel>
-                      <Select
-                        value={choreForm.assignedTo}
-                        label="Assign To"
-                        onChange={(e) =>
-                          setChoreForm({
-                            ...choreForm,
-                            assignedTo: e.target.value,
-                          })
-                        }
-                        required
-                      >
-                        {familyMembers.map((member) => (
-                          <MenuItem key={member.id} value={member.id}>
-                            {member.displayName}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    {renderChildSelect()}
                   </Grid>
                   {choreForm.timeframe === "daily" && (
                     <Grid item xs={12}>

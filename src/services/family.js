@@ -9,7 +9,8 @@ import {
   deleteDoc,
   serverTimestamp,
   limit,
-  getDoc
+  getDoc,
+  onSnapshot
 } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../config/firebase';
@@ -49,7 +50,7 @@ export const getFamilyMembers = async (parentId) => {
     const querySnapshot = await getDocs(q);
     
     const members = querySnapshot.docs.map(doc => ({
-      id: doc.id,
+      uid: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
       updatedAt: doc.data().updatedAt?.toDate()
@@ -66,34 +67,33 @@ export const getFamilyMembers = async (parentId) => {
 // Add a child account
 export const addChildAccount = async (parentId, childData) => {
   try {
-    console.log('Adding child account with parent:', parentId);
-    // Generate a temporary password
-    const tempPassword = Math.random().toString(36).slice(-8);
+    console.log('Adding child account:', childData);
     
-    // Register the child user
-    const childUser = await registerUser(
+    // Create auth account for child
+    const { user } = await createUserWithEmailAndPassword(
+      auth,
       childData.email,
-      tempPassword,
-      childData.displayName,
-      'child'
+      'temppass123' // Temporary password
     );
-
-    // Add additional child-specific data
-    const childRef = doc(db, 'users', childUser.uid);
-    const childUpdateData = {
-      parentId,
-      dateOfBirth: childData.dateOfBirth || null,
+    
+    // Create user document
+    const userData = {
+      displayName: childData.displayName,
+      email: childData.email,
+      role: 'child',
+      parentId: parentId,
+      dateOfBirth: childData.dateOfBirth,
       allowance: parseFloat(childData.allowance) || 0,
+      balance: 0, // Initialize balance for rewards
+      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-
-    console.log('Updating child document with:', childUpdateData);
-    await updateDoc(childRef, childUpdateData);
-
+    
+    await registerUser(user.uid, userData);
+    
     return {
-      ...childUser,
-      ...childUpdateData,
-      temporaryPassword: tempPassword
+      id: user.uid,
+      ...userData
     };
   } catch (error) {
     console.error('Error adding child account:', error);
@@ -181,4 +181,70 @@ export const getChildStats = async (childId) => {
     console.error('Error getting child stats:', error);
     throw error;
   }
+};
+
+/**
+ * Subscribe to real-time updates for family members
+ * @param {string} parentId - The parent's user ID
+ * @param {function} onUpdate - Callback function for updates
+ * @returns {function} Unsubscribe function
+ */
+export const subscribeFamilyMembers = (parentId, onUpdate) => {
+  if (!parentId) {
+    console.error('No parent ID provided');
+    return () => {};
+  }
+
+  const usersRef = collection(db, 'users');
+  const q = query(
+    usersRef,
+    where('parentId', '==', parentId),
+    where('role', '==', 'child')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const members = snapshot.docs.map(doc => ({
+      uid: doc.id,
+      ...doc.data(),
+      balance: parseFloat(doc.data().balance) || 0
+    }));
+    onUpdate(members);
+  }, (error) => {
+    console.error('Error subscribing to family members:', error);
+  });
+};
+
+/**
+ * Subscribe to real-time updates for a child's stats
+ * @param {string} childId - The child's user ID
+ * @param {function} onUpdate - Callback function for updates
+ * @returns {function} Unsubscribe function
+ */
+export const subscribeChildStats = (childId, onUpdate) => {
+  if (!childId) {
+    console.error('No child ID provided');
+    return () => {};
+  }
+
+  // Subscribe to rewards collection for the child
+  const rewardsRef = collection(db, 'rewards');
+  const rewardsQuery = query(
+    rewardsRef,
+    where('childId', '==', childId)
+  );
+
+  return onSnapshot(rewardsQuery, (snapshot) => {
+    // Calculate total rewards from all reward documents
+    const totalRewardsEarned = snapshot.docs.reduce((sum, doc) => {
+      const reward = doc.data();
+      return sum + (parseFloat(reward.amount) || 0);
+    }, 0);
+
+    onUpdate({
+      totalRewardsEarned,
+      updatedAt: serverTimestamp()
+    });
+  }, (error) => {
+    console.error('Error subscribing to child stats:', error);
+  });
 };

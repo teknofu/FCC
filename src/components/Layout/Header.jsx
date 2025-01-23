@@ -23,6 +23,15 @@ const Header = () => {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const [anchorEl, setAnchorEl] = useState(null);
 
+  const pages = [
+    { title: 'Dashboard', path: '/' },
+    { title: 'Chores', path: '/chores' },
+    { title: 'Family', path: '/family', roles: ['parent'] },
+    { title: 'Allowances', path: '/allowances', roles: ['parent'] },
+    { title: 'Payments', path: '/payments', roles: ['parent'] },
+    { title: 'Admin', path: '/admin', roles: ['parent'] }
+  ];
+
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -61,29 +70,17 @@ const Header = () => {
         {isAuthenticated ? (
           <>
             <Box sx={{ mr: 2 }}>
-              <Button
-                color="inherit"
-                component={Link}
-                to="/dashboard"
-              >
-                Dashboard
-              </Button>
-              <Button
-                color="inherit"
-                component={Link}
-                to="/chores"
-              >
-                Chores
-              </Button>
-              {user?.role === 'parent' && (
+              {pages.map((page) => (
                 <Button
+                  key={page.title}
                   color="inherit"
                   component={Link}
-                  to="/family"
+                  to={page.path}
+                  hidden={page.roles && !page.roles.includes(user?.role)}
                 >
-                  Family
+                  {page.title}
                 </Button>
-              )}
+              ))}
             </Box>
             <IconButton
               size="large"
