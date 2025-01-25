@@ -63,7 +63,9 @@ const PaymentProcessor = ({ onSubmit, unpaidEarnings = [], loading, disabled }) 
                 secondary={
                   <>
                     {earning.source?.type || 'Unknown source'}
-                    {earning.createdAt && ` - ${new Date(earning.createdAt).toLocaleDateString()}`}
+                    {earning.createdAt && ` - ${earning.createdAt.toDate ? 
+                      earning.createdAt.toDate().toLocaleDateString() : 
+                      new Date(earning.createdAt).toLocaleDateString()}`}
                   </>
                 }
               />
