@@ -188,31 +188,16 @@ const FamilyManagement = () => {
           {familyMembers.map((member) => (
             <Grid item xs={12} sm={6} md={4} key={member.id}>
               <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {member.displayName}
+                <CardContent sx={{ pb: 1 }}>
+                  <Typography 
+                    variant="h6" 
+                    align="center"
+                    sx={{ mb: 0 }}
+                  >
+                    {member.displayName || 'Unnamed Child'}
                   </Typography>
-                  <Typography color="textSecondary" gutterBottom>
-                    {member.email}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Role: {member.role}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Earned: ${childStats[member.id]?.totalRewardsEarned?.toFixed(2) || '0.00'}
-                  </Typography>
-                  {childStats[member.id] && (
-                    <Box mt={2}>
-                      <Typography variant="body2">
-                        Chores Completed: {childStats[member.id].totalChoresCompleted}
-                      </Typography>
-                      <Typography variant="body2">
-                        This Week: {childStats[member.id].weeklyChoresCompleted} chores
-                      </Typography>
-                    </Box>
-                  )}
                 </CardContent>
-                <CardActions>
+                <CardActions sx={{ justifyContent: 'center', pt: 0 }}>
                   <IconButton
                     size="small"
                     onClick={() => handleOpenDialog(member)}
