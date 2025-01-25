@@ -557,7 +557,18 @@ const ChoreManagement = () => {
                       )}
                     </Grid>
                     <Grid item xs={12} sm={3}>
-                      <Box display="flex" gap={1}>
+                      <Box 
+                        display="flex" 
+                        gap={1} 
+                        flexWrap="wrap"
+                        justifyContent="flex-start"
+                        sx={{ 
+                          '& .MuiButton-root': { 
+                            minWidth: 'auto',
+                            mb: 1 
+                          }
+                        }}
+                      >
                         {role === "parent" && (
                           <>
                             <Button
