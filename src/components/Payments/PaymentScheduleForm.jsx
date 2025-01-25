@@ -15,7 +15,7 @@ import PropTypes from 'prop-types';
 /**
  * Form component for managing payment schedules
  */
-const PaymentScheduleForm = ({ schedule, onSubmit, disabled }) => {
+const PaymentScheduleForm = ({ schedule, onSubmit, disabled, loading }) => {
   const [frequency, setFrequency] = useState('biweekly');
   const [error, setError] = useState('');
 
@@ -70,7 +70,7 @@ const PaymentScheduleForm = ({ schedule, onSubmit, disabled }) => {
           value={frequency}
           label="Payment Frequency"
           onChange={(e) => setFrequency(e.target.value)}
-          disabled={disabled}
+          disabled={disabled || loading}
         >
           <MenuItem value="biweekly">Every Two Weeks</MenuItem>
           <MenuItem value="monthly">Monthly</MenuItem>
@@ -80,10 +80,10 @@ const PaymentScheduleForm = ({ schedule, onSubmit, disabled }) => {
       <Button
         type="submit"
         variant="contained"
-        disabled={disabled}
+        disabled={disabled || loading}
         sx={{ mt: 2 }}
       >
-        {disabled ? <CircularProgress size={24} /> : 'Save Schedule'}
+        {loading ? <CircularProgress size={24} /> : 'Save Schedule'}
       </Button>
     </Box>
   );
@@ -95,12 +95,14 @@ PaymentScheduleForm.propTypes = {
     nextPaymentDue: PropTypes.object
   }),
   onSubmit: PropTypes.func.isRequired,
-  disabled: PropTypes.bool
+  disabled: PropTypes.bool,
+  loading: PropTypes.bool
 };
 
 PaymentScheduleForm.defaultProps = {
   schedule: null,
-  disabled: false
+  disabled: false,
+  loading: false
 };
 
 export default PaymentScheduleForm;

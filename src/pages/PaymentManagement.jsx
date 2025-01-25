@@ -140,6 +140,11 @@ const PaymentManagement = () => {
     }
   };
 
+  const handleChildSelect = (e) => {
+    const child = familyMembers.find(m => m.uid === e.target.value);
+    setSelectedChild(child || null);
+  };
+
   if (user?.role !== 'parent') {
     return (
       <Container sx={{ mt: 4 }}>
@@ -151,8 +156,8 @@ const PaymentManagement = () => {
   }
 
   return (
-    <Container sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
+    <Container maxWidth="md">
+      <Typography variant="h4" component="h1" gutterBottom>
         Payment Management
       </Typography>
 
@@ -162,40 +167,31 @@ const PaymentManagement = () => {
         </Alert>
       )}
 
-      <Box sx={{ mb: 3 }}>
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Select Child
+        </Typography>
         <FormControl fullWidth>
-          <InputLabel id="child-select-label">Select Child</InputLabel>
+          <InputLabel>Child</InputLabel>
           <Select
-            labelId="child-select-label"
             value={selectedChild?.uid || ''}
-            label="Select Child"
-            onChange={(e) => {
-              const child = familyMembers.find(m => m.uid === e.target.value);
-              setSelectedChild(child || null);
-            }}
+            label="Child"
+            onChange={handleChildSelect}
             disabled={loading}
           >
-            {familyMembers.map((child) => {
-              // Skip any child without a valid uid
-              if (!child?.uid) {
-                console.error('Child missing uid:', child);
-                return null;
-              }
-              return (
-                <MenuItem 
-                  key={`child-select-${child.uid}`} 
-                  value={child.uid}
-                >
-                  {child.displayName || child.email || 'Unnamed Child'}
+            {familyMembers
+              .filter(member => member.role === 'child')
+              .map(child => (
+                <MenuItem key={child.uid} value={child.uid}>
+                  {child.displayName || child.email}
                 </MenuItem>
-              );
-            })}
+              ))}
           </Select>
         </FormControl>
-      </Box>
+      </Paper>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      {selectedChild && (
+        <>
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
               Payment Schedule
@@ -203,35 +199,24 @@ const PaymentManagement = () => {
             <PaymentScheduleForm
               schedule={schedule}
               onSubmit={handleScheduleSubmit}
-              disabled={loading || !selectedChild}
-            />
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Unpaid Earnings
-            </Typography>
-            <EarningsList
-              earnings={unpaidEarnings}
               loading={loading}
+              disabled={!selectedChild}
             />
-            {unpaidEarnings.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleProcessPayment}
-                  disabled={loading || !selectedChild}
-                >
-                  {loading ? <CircularProgress size={24} /> : 'Process Payment'}
-                </Button>
-              </Box>
-            )}
           </Paper>
-        </Grid>
-      </Grid>
+
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Process Payment
+            </Typography>
+            <PaymentProcessor
+              onSubmit={handleProcessPayment}
+              unpaidEarnings={unpaidEarnings}
+              loading={loading}
+              disabled={!selectedChild}
+            />
+          </Paper>
+        </>
+      )}
     </Container>
   );
 };

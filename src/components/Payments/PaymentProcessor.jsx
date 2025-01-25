@@ -1,82 +1,79 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Box,
   Button,
   Typography,
   List,
   ListItem,
   ListItemText,
-  CircularProgress
+  CircularProgress,
+  Paper
 } from '@mui/material';
 import PropTypes from 'prop-types';
 
-const PaymentProcessor = ({ open, onClose, onConfirm, earnings, processing }) => {
-  const totalAmount = earnings.reduce((sum, earning) => sum + earning.amount, 0);
+const PaymentProcessor = ({ onSubmit, unpaidEarnings = [], loading, disabled }) => {
+  const totalAmount = (unpaidEarnings || []).reduce((sum, earning) => sum + (earning.amount || 0), 0);
 
-  const handleConfirm = () => {
-    onConfirm();
-  };
+  if (!unpaidEarnings?.length) {
+    return (
+      <Typography variant="body1" color="text.secondary">
+        No unpaid earnings to process.
+      </Typography>
+    );
+  }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Confirm Payment</DialogTitle>
-      <DialogContent>
-        <Typography variant="body1" gutterBottom>
-          You are about to process payment for the following earnings:
-        </Typography>
+    <Box>
+      <Typography variant="body1" gutterBottom>
+        The following earnings are ready to be processed:
+      </Typography>
+      <Paper variant="outlined" sx={{ mb: 2, maxHeight: 200, overflow: 'auto' }}>
         <List>
-          {earnings.map((earning) => (
-            <ListItem key={earning.id}>
+          {unpaidEarnings.map((earning) => (
+            <ListItem key={earning.id || earning.uid}>
               <ListItemText
-                primary={`$${earning.amount.toFixed(2)}`}
-                secondary={`From ${earning.source.type}`}
+                primary={`$${(earning.amount || 0).toFixed(2)}`}
+                secondary={earning.source?.type || 'Unknown source'}
               />
             </ListItem>
           ))}
         </List>
-        <Typography variant="h6" sx={{ mt: 2 }}>
+      </Paper>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">
           Total Amount: ${totalAmount.toFixed(2)}
         </Typography>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={processing}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleConfirm}
+        <Button
+          onClick={onSubmit}
           variant="contained"
           color="primary"
-          disabled={processing}
+          disabled={disabled || loading || !unpaidEarnings?.length}
         >
-          {processing ? <CircularProgress size={24} /> : 'Confirm Payment'}
+          {loading ? <CircularProgress size={24} /> : 'Process Payment'}
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </Box>
   );
 };
 
 PaymentProcessor.propTypes = {
-  open: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onConfirm: PropTypes.func.isRequired,
-  earnings: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      amount: PropTypes.number.isRequired,
-      source: PropTypes.shape({
-        type: PropTypes.string.isRequired,
-        referenceId: PropTypes.string
-      }).isRequired
+  onSubmit: PropTypes.func.isRequired,
+  unpaidEarnings: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string,
+    uid: PropTypes.string,
+    amount: PropTypes.number,
+    source: PropTypes.shape({
+      type: PropTypes.string
     })
-  ).isRequired,
-  processing: PropTypes.bool
+  })),
+  loading: PropTypes.bool,
+  disabled: PropTypes.bool
 };
 
 PaymentProcessor.defaultProps = {
-  processing: false
+  unpaidEarnings: [],
+  loading: false,
+  disabled: false
 };
 
 export default PaymentProcessor;
