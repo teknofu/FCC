@@ -321,12 +321,14 @@ const ChoreManagement = () => {
 
   const handleMarkComplete = async (choreId) => {
     try {
-      // Ensure we have a user and user ID
-      if (!user || !user.uid) {
+      // Extract UID consistently with loadChores
+      const userId = user?.uid || user?.user?.uid;
+      
+      if (!userId) {
         throw new Error("User not authenticated");
       }
 
-      const updatedChore = await markChoreComplete(choreId, user.uid);
+      const updatedChore = await markChoreComplete(choreId, userId);
 
       // Update the local chores list
       setChores((prevChores) =>

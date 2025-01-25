@@ -23,13 +23,11 @@ const Header = () => {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const [anchorEl, setAnchorEl] = useState(null);
 
-  const pages = [
+  const menuItems = [
     { title: 'Dashboard', path: '/' },
     { title: 'Chores', path: '/chores' },
     { title: 'Family', path: '/family', roles: ['parent'] },
-    { title: 'Allowances', path: '/allowances', roles: ['parent'] },
-    { title: 'Payments', path: '/payments', roles: ['parent'] },
-    { title: 'Admin', path: '/admin', roles: ['parent'] }
+    { title: 'Finances', path: '/finances', roles: ['parent'] }
   ];
 
   const handleMenu = (event) => {
@@ -70,15 +68,15 @@ const Header = () => {
         {isAuthenticated ? (
           <>
             <Box sx={{ mr: 2 }}>
-              {pages.map((page) => (
+              {menuItems.map((menuItem) => (
                 <Button
-                  key={page.title}
+                  key={menuItem.title}
                   color="inherit"
                   component={Link}
-                  to={page.path}
-                  hidden={page.roles && !page.roles.includes(user?.role)}
+                  to={menuItem.path}
+                  hidden={menuItem.roles && !menuItem.roles.includes(user?.role)}
                 >
-                  {page.title}
+                  {menuItem.title}
                 </Button>
               ))}
             </Box>
