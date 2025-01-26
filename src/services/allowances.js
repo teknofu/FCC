@@ -391,3 +391,18 @@ export const processAllowancePayments = async (childId) => {
     throw error;
   }
 };
+
+/**
+ * Delete an allowance
+ * @param {string} allowanceId ID of the allowance to delete
+ * @returns {Promise<void>}
+ */
+export const deleteAllowance = async (allowanceId) => {
+  try {
+    const allowanceRef = doc(db, 'allowances', allowanceId);
+    await deleteDoc(allowanceRef);
+  } catch (error) {
+    console.error('Error deleting allowance:', error);
+    throw error;
+  }
+};

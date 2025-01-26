@@ -15,9 +15,9 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import PropTypes from 'prop-types';
-import { createAllowance } from '../../services/allowances';
+import { createAllowance, deleteAllowance } from '../../services/allowances';
 
 /**
  * Component for managing allowance settings for a child
@@ -90,6 +90,20 @@ const AllowanceSettings = ({
     }
   };
 
+  const handleDelete = async (allowanceId) => {
+    if (!window.confirm('Are you sure you want to delete this allowance?')) {
+      return;
+    }
+
+    try {
+      await deleteAllowance(allowanceId);
+      if (onAllowanceChange) onAllowanceChange();
+    } catch (error) {
+      console.error('Error deleting allowance:', error);
+      setError(error.message || 'Failed to delete allowance');
+    }
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -128,13 +142,23 @@ const AllowanceSettings = ({
                   <Typography variant="h6" component="div">
                     {formatCurrency(allowance.amount)}
                   </Typography>
-                  <IconButton 
-                    size="small" 
-                    onClick={() => handleOpenDialog(allowance)}
-                    disabled={loading}
-                  >
-                    <EditIcon />
-                  </IconButton>
+                  <Box>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleOpenDialog(allowance)}
+                      disabled={loading}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleDelete(allowance.id)}
+                      disabled={loading}
+                      color="error"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
                 </Box>
                 <Typography color="text.secondary" sx={{ mb: 1 }}>
                   {allowance.description || 'No description'}
