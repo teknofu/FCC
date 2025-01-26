@@ -1,12 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  onAuthStateChanged,
-  signOut as firebaseSignOut
-} from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
-import { useDispatch } from 'react-redux';
-import { setUser, setRole } from '../store/slices/authSlice';
+import { createContext, useContext, useState, useEffect } from "react";
+import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../config/firebase";
+import { useDispatch } from "react-redux";
+import { setUser, setRole } from "../store/slices/authSlice";
 
 const AuthContext = createContext();
 
@@ -14,7 +11,12 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+import PropTypes from "prop-types";
+
 export function AuthProvider({ children }) {
+  AuthProvider.propTypes = {
+    children: PropTypes.node,
+  };
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
@@ -23,8 +25,8 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // Get additional user data from Firestore
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+
         // Create a serializable user object with only the data we need
         const serializedUser = {
           uid: user.uid,
@@ -32,12 +34,13 @@ export function AuthProvider({ children }) {
           displayName: user.displayName,
           emailVerified: user.emailVerified,
           // Add any other primitive fields you need from the user object
-          ...(userDoc.exists() ? userDoc.data() : {})
+          ...(userDoc.exists() ? userDoc.data() : {}),
         };
 
         setCurrentUser(serializedUser);
         dispatch(setUser(serializedUser));
         dispatch(setRole(serializedUser.role || null));
+        console.log("Auth state changed:", serializedUser);
       } else {
         setCurrentUser(null);
         dispatch(setUser(null));
@@ -55,7 +58,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
-    signOut
+    signOut,
   };
 
   return (
