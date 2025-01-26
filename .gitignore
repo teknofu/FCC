@@ -24,3 +24,10 @@ dist-ssr
 *.sln
 *.sw?
 *.code-workspace
+
+# Firebase
+.firebase/
+*-debug.log
+.runtimeconfig.json
+.env.*
+!.env.example
