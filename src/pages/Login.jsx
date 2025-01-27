@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Paper,
@@ -13,59 +13,70 @@ import {
   Select,
   MenuItem,
   Alert,
-} from '@mui/material';
-import { loginUser, registerUser } from '../services/auth';
-import { setUser, setRole, setError, setLoading } from '../store/slices/authSlice';
+} from "@mui/material";
+import { loginUser, registerUser } from "../services/auth";
+import {
+  setUser,
+  setRole,
+  setError,
+  setLoading,
+} from "../store/slices/authSlice";
 
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
 
-  const [userType, setUserType] = useState('parent');
+  const [userType, setUserType] = useState("parent");
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
   const [isRegistering, setIsRegistering] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(setError(''));
+    dispatch(setError(""));
     dispatch(setLoading(true));
 
     try {
       let user;
-      
+
       if (isRegistering) {
-        console.log('Registering new user with role:', userType);
-        user = await registerUser(formData.email, formData.password, formData.email.split('@')[0], userType);
+        console.log("Registering new user with role:", userType);
+        user = await registerUser(
+          formData.email,
+          formData.password,
+          formData.email.split("@")[0],
+          userType,
+          formData.parentEmail
+        );
       } else {
-        console.log('Logging in user');
+        console.log("Logging in user");
         user = await loginUser(formData.email, formData.password);
       }
 
-      console.log('User data received:', user);
-      
+      console.log("User data received:", user);
+
       if (!user) {
-        throw new Error('No user data received');
+        throw new Error("No user data received");
       }
 
       if (!user.role) {
-        console.error('No role found in user data:', user);
-        throw new Error('User role not found. Please contact support.');
+        console.error("No role found in user data:", user);
+        throw new Error("User role not found. Please contact support.");
       }
 
       dispatch(setUser(user));
       dispatch(setRole(user.role));
-      
+
       if (user.requiresPasswordChange) {
-        navigate('/password-reset');
+        navigate("/password-reset");
       } else {
-        navigate('/dashboard');
+        navigate("/dashboard");
       }
     } catch (err) {
-      console.error('Login/Register error:', err);
+      console.error("Login/Register error:", err);
       dispatch(setError(err.message));
       dispatch(setLoading(false));
     }
@@ -73,9 +84,9 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -84,7 +95,7 @@ const Login = () => {
       <Box sx={{ mt: 8 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
           <Typography variant="h5" component="h1" gutterBottom align="center">
-            {isRegistering ? 'Register for' : 'Login to'} Family Chore Chart
+            {isRegistering ? "Register for" : "Login to"} Family Chore Chart
           </Typography>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -103,6 +114,18 @@ const Login = () => {
                 <MenuItem value="child">Child</MenuItem>
               </Select>
             </FormControl>
+            {userType === "child" && isRegistering && (
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                label="Parent Email Address"
+                name="parentEmail"
+                autoComplete="email"
+                onChange={handleChange}
+                disabled={loading}
+              />
+            )}
             <TextField
               margin="normal"
               required
@@ -133,7 +156,11 @@ const Login = () => {
               sx={{ mt: 3, mb: 2 }}
               disabled={loading}
             >
-              {loading ? 'Please wait...' : (isRegistering ? 'Register' : 'Sign In')}
+              {loading
+                ? "Please wait..."
+                : isRegistering
+                ? "Register"
+                : "Sign In"}
             </Button>
             <Button
               fullWidth
@@ -141,7 +168,9 @@ const Login = () => {
               onClick={() => setIsRegistering(!isRegistering)}
               disabled={loading}
             >
-              {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register'}
+              {isRegistering
+                ? "Already have an account? Sign In"
+                : "Need an account? Register"}
             </Button>
           </form>
         </Paper>
