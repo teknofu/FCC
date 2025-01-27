@@ -154,13 +154,6 @@ const FamilyManagement = () => {
         mb={3}
       >
         <Typography variant="h4">Family Management</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => handleOpenDialog()}
-        >
-          Add Child Account
-        </Button>
       </Box>
 
       {loading ? (
