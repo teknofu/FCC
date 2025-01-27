@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useState } from "react";
+import { useSelector } from "react-redux";
 import {
   Container,
   Paper,
@@ -10,32 +10,32 @@ import {
   Alert,
   Grid,
   Divider,
-  Avatar
-} from '@mui/material';
-import { updatePassword, updateUserProfile } from '../services/auth';
+  Avatar,
+} from "@mui/material";
+import { updatePassword, updateUserProfile } from "../services/auth";
 
 const Profile = () => {
   const { user } = useSelector((state) => state.auth);
-  
+
   // Profile update state
-  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [profileUpdateSuccess, setProfileUpdateSuccess] = useState(false);
-  const [profileError, setProfileError] = useState('');
+  const [profileError, setProfileError] = useState("");
 
   // Password change state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
-    setProfileError('');
+    setProfileError("");
     setProfileUpdateSuccess(false);
 
     try {
-      await updateUserProfile({ displayName });
+      await updateUserProfile({ displayName, photoURL: user?.photoURL || "" });
       setProfileUpdateSuccess(true);
     } catch (error) {
       setProfileError(error.message);
@@ -44,25 +44,25 @@ const Profile = () => {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    setPasswordError('');
+    setPasswordError("");
     setPasswordSuccess(false);
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match');
+      setPasswordError("New passwords do not match");
       return;
     }
 
     if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters long');
+      setPasswordError("Password must be at least 6 characters long");
       return;
     }
 
     try {
       await updatePassword(currentPassword, newPassword);
       setPasswordSuccess(true);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
     } catch (error) {
       setPasswordError(error.message);
     }
@@ -95,7 +95,7 @@ const Profile = () => {
                 {profileError}
               </Alert>
             )}
-            
+
             {profileUpdateSuccess && (
               <Alert severity="success" sx={{ mb: 2 }}>
                 Profile updated successfully!
@@ -136,7 +136,7 @@ const Profile = () => {
                 {passwordError}
               </Alert>
             )}
-            
+
             {passwordSuccess && (
               <Alert severity="success" sx={{ mb: 2 }}>
                 Password updated successfully!
@@ -153,7 +153,7 @@ const Profile = () => {
                 margin="normal"
                 required
               />
-              
+
               <TextField
                 fullWidth
                 type="password"
@@ -163,7 +163,7 @@ const Profile = () => {
                 margin="normal"
                 required
               />
-              
+
               <TextField
                 fullWidth
                 type="password"
