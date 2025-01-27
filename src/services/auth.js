@@ -97,6 +97,7 @@ export const registerUser = async (
       email,
       displayName,
       role,
+      parentUid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
