@@ -105,7 +105,7 @@ const FamilyManagement = () => {
 
     try {
       if (selectedChild) {
-        await updateChildAccount(selectedChild.id, formData);
+        await updateChildAccount(selectedChild.uid, formData);
       } else {
         await addChildAccount(user.uid, formData);
       }
