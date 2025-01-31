@@ -9,6 +9,7 @@ import {
   limit,
   getDoc,
   onSnapshot,
+  setDoc,
 } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../config/firebase";
@@ -105,13 +106,19 @@ export const updateChildAccount = async (childId, updates) => {
   try {
     console.log("Updating child account:", childId, updates);
     const childRef = doc(db, "users", childId);
+    const childDoc = await getDoc(childRef);
     const updateData = {
       ...updates,
       allowance: parseFloat(updates.allowance) || 0,
+      dateOfBirth: updates.dateOfBirth,
       updatedAt: serverTimestamp(),
     };
 
-    await updateDoc(childRef, updateData);
+    if (childDoc.exists()) {
+      await updateDoc(childRef, updateData);
+    } else {
+      await setDoc(childRef, updateData);
+    }
     return { id: childId, ...updateData };
   } catch (error) {
     console.error("Error updating child account:", error);

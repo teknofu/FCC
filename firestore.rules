@@ -29,7 +29,7 @@ service cloud.firestore {
     // Users collection
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if request.auth.uid == userId;
+      allow write: if request.auth.uid == userId || (isParent() && get(/databases/$(database)/documents/users/$(userId)).data.parentUid == request.auth.uid);
     }
 
     // Allowances collection
