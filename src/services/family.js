@@ -15,18 +15,18 @@ import { auth, db } from "../config/firebase";
 import { registerUser } from "./auth";
 
 // Get family members for a parent
-export const getFamilyMembers = async (parentId) => {
+export const getFamilyMembers = async (parentUid) => {
   try {
-    console.log("Getting family members for parent:", parentId);
+    console.log("Getting family members for parent:", parentUid);
 
-    if (!parentId) {
+    if (!parentUid) {
       console.error("No parent ID provided");
-      console.log("Parent ID:", parentId);
+      console.log("Parent ID:", parentUid);
       throw new Error("No parent ID provided");
     }
 
     // First verify the parent's role
-    const parentDoc = await getDoc(doc(db, "users", parentId));
+    const parentDoc = await getDoc(doc(db, "users", parentUid));
     if (!parentDoc.exists()) {
       console.error("Parent document not found");
       throw new Error("Parent document not found");
@@ -42,7 +42,7 @@ export const getFamilyMembers = async (parentId) => {
     const usersRef = collection(db, "users");
     const q = query(
       usersRef,
-      where("parentId", "==", parentId),
+      where("parentUid", "==", parentUid),
       where("role", "==", "child")
     );
 
@@ -64,7 +64,7 @@ export const getFamilyMembers = async (parentId) => {
 };
 
 // Add a child account
-export const addChildAccount = async (parentId, childData) => {
+export const addChildAccount = async (parentUid, childData) => {
   try {
     console.log("Adding child account:", childData);
 
@@ -80,7 +80,7 @@ export const addChildAccount = async (parentId, childData) => {
       displayName: childData.displayName,
       email: childData.email,
       role: "child",
-      parentId: parentId,
+      parentUid: parentUid,
       dateOfBirth: childData.dateOfBirth,
       allowance: parseFloat(childData.allowance) || 0,
       balance: 0, // Initialize balance for rewards
@@ -127,7 +127,7 @@ export const removeChildAccount = async (childId) => {
     // The user account remains but is unlinked
     const childRef = doc(db, "users", childId);
     await updateDoc(childRef, {
-      parentId: null,
+      parentUid: null,
       updatedAt: serverTimestamp(),
     });
     return childId;
@@ -184,12 +184,12 @@ export const getChildStats = async (childId) => {
 
 /**
  * Subscribe to real-time updates for family members
- * @param {string} parentId - The parent's user ID
+ * @param {string} parentUid - The parent's user ID
  * @param {function} onUpdate - Callback function for updates
  * @returns {function} Unsubscribe function
  */
-export const subscribeFamilyMembers = (parentId, onUpdate) => {
-  if (!parentId) {
+export const subscribeFamilyMembers = (parentUid, onUpdate) => {
+  if (!parentUid) {
     console.error("No parent ID provided");
     return () => {};
   }
@@ -197,7 +197,7 @@ export const subscribeFamilyMembers = (parentId, onUpdate) => {
   const usersRef = collection(db, "users");
   const q = query(
     usersRef,
-    where("parentId", "==", parentId),
+    where("parentUid", "==", parentUid),
     where("role", "==", "child")
   );
 
