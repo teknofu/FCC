@@ -43,6 +43,7 @@ export const createChore = async (choreData, schedulePattern = null) => {
       createdBy: choreData.createdBy,
       status: 'pending',
       scheduledDays: choreData.scheduledDays || {},
+      startDate: choreData.startDate || null,
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -135,23 +136,28 @@ export const getAssignedChores = async (childId) => {
 export const updateChore = async (choreId, choreData) => {
   try {
     const choreRef = doc(db, 'chores', choreId);
-    const updates = {
+    const updatedChore = {
       title: choreData.title,
       description: choreData.description,
       reward: choreData.resetRewards ? 0 : (parseFloat(choreData.reward) || 0),
       timeframe: choreData.timeframe,
       assignedTo: choreData.assignedTo,
       scheduledDays: choreData.scheduledDays || {},
+      startDate: choreData.startDate || null,
       status: choreData.status || 'pending',
       completedAt: choreData.completedAt || null,
       verifiedAt: choreData.verifiedAt || null,
       verifiedBy: choreData.verifiedBy || null,
       updatedAt: serverTimestamp(),
-      // Only update rewardsResetDate if rewards are manually reset
       ...(choreData.resetRewards && { rewardsResetDate: serverTimestamp() })
     };
-    await updateDoc(choreRef, updates);
-    return { id: choreId, ...updates };
+
+    await updateDoc(choreRef, updatedChore);
+
+    return {
+      id: choreId,
+      ...updatedChore
+    };
   } catch (error) {
     console.error('Error updating chore:', error);
     throw error;
