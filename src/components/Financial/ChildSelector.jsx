@@ -15,10 +15,10 @@ import PropTypes from 'prop-types';
  */
 const ChildSelector = ({
   familyMembers,
-  selectedChild,
+  selectedChild = null,
   onChildSelect,
-  loading,
-  error,
+  loading = false,
+  error = '',
   label = "Select Child"
 }) => {
   return (
@@ -77,13 +77,6 @@ ChildSelector.propTypes = {
   loading: PropTypes.bool,
   error: PropTypes.string,
   label: PropTypes.string
-};
-
-ChildSelector.defaultProps = {
-  selectedChild: null,
-  loading: false,
-  error: '',
-  label: 'Select Child'
 };
 
 export default ChildSelector;
