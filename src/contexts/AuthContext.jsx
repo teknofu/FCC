@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
         setCurrentUser(serializedUser);
         dispatch(setUser(serializedUser));
         dispatch(setRole(serializedUser.role || null));
-        console.log("Auth state changed:", serializedUser);
+        
       } else {
         setCurrentUser(null);
         dispatch(setUser(null));

@@ -12,25 +12,10 @@ const firebaseConfig = {
   measurementId: import.meta.env.FIREBASE_MEASUREMENT_ID,
 };
 
-// Debug log to check if environment variables are loaded
-console.log("Environment Variables Check:", {
-  apiKey: firebaseConfig.apiKey ? "Present" : "Missing",
-  authDomain: firebaseConfig.authDomain ? "Present" : "Missing",
-  projectId: firebaseConfig.projectId ? "Present" : "Missing",
-});
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
-// Enable logging in development
-if (import.meta.env.DEV) {
-  console.log("Firebase initialized with config:", {
-    ...firebaseConfig,
-    apiKey: "***", // Hide API key in logs
-  });
-}
 
 // Enable offline persistence
 enableIndexedDbPersistence(db).catch((err) => {
