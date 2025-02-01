@@ -183,6 +183,11 @@ const ChoreManagement = () => {
             return chore.startDate === new Date().toISOString().split('T')[0];
           }
           
+          if (chore.timeframe === "daily") {
+            return true; // Daily chores are always due today
+          }
+          
+          // Weekly chores
           return chore.scheduledDays && chore.scheduledDays[today];
         });
       }
