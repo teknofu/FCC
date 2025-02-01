@@ -69,10 +69,6 @@ const ChoreManagement = () => {
     reward: 0,
     timeframe: "daily",
     assignedTo: "",
-    scheduledDays: DAYS_OF_WEEK.reduce(
-      (acc, day) => ({ ...acc, [day]: false }),
-      {}
-    ),
     startDate: "",
   });
 
@@ -103,8 +99,6 @@ const ChoreManagement = () => {
         (chore) =>
           // Must be a daily recurring chore
           chore.timeframe === "daily" &&
-          // Must be scheduled for today
-          chore.scheduledDays?.[currentDay] === true &&
           // Must have been verified yesterday or earlier
           chore.status === "verified" &&
           // Check if the last verification was not today
@@ -233,17 +227,22 @@ const ChoreManagement = () => {
 
   const handleOpenDialog = (chore = null) => {
     if (chore) {
-      setChoreForm({
+      const formData = {
         title: chore.title,
         description: chore.description,
         reward: chore.reward || 0,
         timeframe: chore.timeframe,
         assignedTo: chore.assignedTo,
-        scheduledDays:
-          chore.scheduledDays ||
-          DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {}),
         startDate: chore.startDate || "",
-      });
+      };
+      
+      // Only include scheduledDays for weekly chores
+      if (chore.timeframe === "weekly") {
+        formData.scheduledDays = chore.scheduledDays || 
+          DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {});
+      }
+      
+      setChoreForm(formData);
       setSelectedChore(chore);
     } else {
       setChoreForm({
@@ -252,10 +251,6 @@ const ChoreManagement = () => {
         reward: 0,
         timeframe: "daily",
         assignedTo: "",
-        scheduledDays: DAYS_OF_WEEK.reduce(
-          (acc, day) => ({ ...acc, [day]: false }),
-          {}
-        ),
         startDate: "",
       });
       setSelectedChore(null);
@@ -272,10 +267,6 @@ const ChoreManagement = () => {
       reward: 0,
       timeframe: "daily",
       assignedTo: "",
-      scheduledDays: DAYS_OF_WEEK.reduce(
-        (acc, day) => ({ ...acc, [day]: false }),
-        {}
-      ),
       startDate: "",
     });
   };
@@ -299,6 +290,11 @@ const ChoreManagement = () => {
         reward: parseFloat(choreForm.reward) || 0,
         createdBy: user.uid,
       };
+
+      // Remove scheduledDays for daily chores
+      if (choreData.timeframe === "daily") {
+        delete choreData.scheduledDays;
+      }
 
       if (selectedChore) {
         await updateChore(selectedChore.id, choreData);
@@ -586,20 +582,16 @@ const ChoreManagement = () => {
                       </Typography>
                       {chore.timeframe === "daily" && (
                         <Typography variant="body2">
-                          Schedule: Daily on{" "}
-                          {Object.entries(chore.scheduledDays || {})
-                            .filter(([, checked]) => checked)
-                            .map(([day]) => day)
-                            .join(", ")}
+                          Schedule: Daily
                         </Typography>
                       )}
-                      {chore.timeframe === "weekly" && (
+                      {chore.timeframe === "weekly" && chore.scheduledDays && (
                         <Typography variant="body2">
                           Schedule: Weekly on{" "}
-                          {Object.entries(chore.scheduledDays || {})
+                          {Object.entries(chore.scheduledDays)
                             .filter(([, checked]) => checked)
                             .map(([day]) => day)
-                            .join(", ")}
+                            .join(", ") || "no days selected"}
                         </Typography>
                       )}
                       {chore.timeframe === "monthly" && (
@@ -612,6 +604,8 @@ const ChoreManagement = () => {
                         <Typography variant="body2" color="error">
                           Due: {chore.timeframe === "monthly" 
                             ? chore.startDate 
+                            : chore.timeframe === "daily"
+                            ? "Today"
                             : Object.entries(chore.scheduledDays || {})
                                 .filter(([, checked]) => checked)
                                 .map(([day]) => day)
@@ -802,7 +796,7 @@ const ChoreManagement = () => {
                             key={day}
                             control={
                               <Checkbox
-                                checked={choreForm.scheduledDays[day]}
+                                checked={choreForm.scheduledDays?.[day] || false}
                                 onChange={() => handleDayToggle(day)}
                               />
                             }
