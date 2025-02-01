@@ -420,6 +420,26 @@ const ChoreManagement = () => {
     }
   };
 
+  const getNextScheduledDay = (scheduledDays) => {
+    if (!scheduledDays) return null;
+    
+    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
+    const daysOrder = [...DAYS_OF_WEEK]; // Use our existing DAYS_OF_WEEK array
+    
+    // Find today's index
+    const todayIndex = daysOrder.indexOf(today);
+    
+    // Check each day starting from tomorrow
+    for (let i = 1; i <= 7; i++) {
+      const nextIndex = (todayIndex + i) % 7;
+      const nextDay = daysOrder[nextIndex];
+      if (scheduledDays[nextDay]) {
+        return nextDay;
+      }
+    }
+    return null;
+  };
+
   const renderChildSelect = () => (
     <FormControl fullWidth sx={{ mb: 2 }}>
       <InputLabel>Assign To</InputLabel>
@@ -611,7 +631,9 @@ const ChoreManagement = () => {
                                 .map(([day]) => day)
                                 .includes(new Date().toLocaleString('en-US', { weekday: 'long' }))
                             ? "Today"
-                            : "Next scheduled day"}
+                            : getNextScheduledDay(chore.scheduledDays) 
+                              ? `Next ${getNextScheduledDay(chore.scheduledDays)}`
+                              : "No days scheduled"}
                         </Typography>
                       )}
                     </Grid>
