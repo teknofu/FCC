@@ -18,7 +18,7 @@ import { registerUser } from "./auth";
 // Get family members for a parent
 export const getFamilyMembers = async (parentUid) => {
   try {
-    console.log("Getting family members for parent:", parentUid);
+    
 
     if (!parentUid) {
       console.error("No parent ID provided");
@@ -56,7 +56,7 @@ export const getFamilyMembers = async (parentUid) => {
       updatedAt: doc.data().updatedAt?.toDate(),
     }));
 
-    console.log("Found family members:", members);
+    
     return members;
   } catch (error) {
     console.error("Error getting family members:", error);
@@ -104,7 +104,7 @@ export const addChildAccount = async (parentUid, childData) => {
 // Update a child account
 export const updateChildAccount = async (childId, updates) => {
   try {
-    console.log("Updating child account:", childId, updates);
+    
     const childRef = doc(db, "users", childId);
     const childDoc = await getDoc(childRef);
     const updateData = {
@@ -129,7 +129,7 @@ export const updateChildAccount = async (childId, updates) => {
 // Remove a child from the family
 export const removeChildAccount = async (childId) => {
   try {
-    console.log("Removing child account:", childId);
+    
     // Note: This only removes the child from the family
     // The user account remains but is unlinked
     const childRef = doc(db, "users", childId);
@@ -147,7 +147,7 @@ export const removeChildAccount = async (childId) => {
 // Get statistics for a child
 export const getChildStats = async (childId) => {
   try {
-    console.log("Getting stats for child:", childId);
+    
     // Get completed chores count
     const completedChoresQuery = query(
       collection(db, "chores"),
@@ -181,7 +181,7 @@ export const getChildStats = async (childId) => {
       weeklyChoresCompleted: weeklyChores.size,
     };
 
-    console.log("Child stats:", stats);
+    
     return stats;
   } catch (error) {
     console.error("Error getting child stats:", error);

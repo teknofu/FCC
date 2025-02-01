@@ -163,8 +163,7 @@ const ChoreManagement = () => {
         fetchedChores = await getChores(userId);
       }
 
-      console.log("Current filters:", filters);
-      console.log("Fetched chores before filtering:", fetchedChores);
+      
 
       // Apply filters
       let filteredChores = fetchedChores;
@@ -181,7 +180,7 @@ const ChoreManagement = () => {
         );
       }
 
-      console.log("Filtered chores:", filteredChores);
+      
 
       setChores(filteredChores);
       setLoading(false);
@@ -202,7 +201,7 @@ const ChoreManagement = () => {
       setLoading(true);
       setError("");
       const members = await getFamilyMembers(uid);
-      console.log(`Loaded ${members.length} family members`);
+      
       setFamilyMembers(members);
 
       // Load stats for each child
@@ -210,7 +209,7 @@ const ChoreManagement = () => {
       for (const member of members) {
         if (member.role === "child" && member.uid) {
           const memberStats = await getChildStats(member.uid);
-          console.log(`Loaded stats for child: ${member.uid}`, memberStats);
+          
           stats[member.uid] = memberStats;
         }
       }
