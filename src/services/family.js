@@ -10,8 +10,10 @@ import {
   getDoc,
   onSnapshot,
   setDoc,
+  writeBatch,
+  deleteDoc,
 } from "firebase/firestore";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail, deleteUser } from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { registerUser } from "./auth";
 
@@ -126,18 +128,53 @@ export const updateChildAccount = async (childId, updates) => {
   }
 };
 
-// Remove a child from the family
-export const removeChildAccount = async (childId) => {
+// Remove a child from the family and delete their account
+export const removeChildAccount = async (childUid) => {
   try {
+    if (!childUid || typeof childUid !== 'string') {
+      throw new Error("Invalid child UID provided");
+    }
+
+    // Verify the child exists first
+    const childRef = doc(db, "users", childUid);
+    const childDoc = await getDoc(childRef);
     
-    // Note: This only removes the child from the family
-    // The user account remains but is unlinked
-    const childRef = doc(db, "users", childId);
-    await updateDoc(childRef, {
-      parentUid: null,
-      updatedAt: serverTimestamp(),
-    });
-    return childId;
+    if (!childDoc.exists()) {
+      throw new Error("Child account not found");
+    }
+
+    // Delete chores first
+    const choresQuery = query(
+      collection(db, "chores"),
+      where("assignedTo", "==", childUid)
+    );
+    const choresSnapshot = await getDocs(choresQuery);
+    if (!choresSnapshot.empty) {
+      const batch1 = writeBatch(db);
+      choresSnapshot.forEach((choreDoc) => {
+        batch1.delete(choreDoc.ref);
+      });
+      await batch1.commit();
+    }
+
+    // Delete completed chores history
+    const historyQuery = query(
+      collection(db, "completedChores"),
+      where("userId", "==", childUid)
+    );
+    const historySnapshot = await getDocs(historyQuery);
+    if (!historySnapshot.empty) {
+      const batch2 = writeBatch(db);
+      historySnapshot.forEach((historyDoc) => {
+        batch2.delete(historyDoc.ref);
+      });
+      await batch2.commit();
+    }
+
+    // Finally delete the user document
+    await deleteDoc(childRef);
+    
+    return { success: true, childUid };
   } catch (error) {
     console.error("Error removing child account:", error);
     throw error;
