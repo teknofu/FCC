@@ -14,29 +14,25 @@ service cloud.firestore {
       return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'child';
     }
 
-    function isAssignedToUser(choreData) {
-      return choreData.assignedTo == request.auth.uid;
-    }
-
-    function isChoreCreator(choreData) {
-      return choreData.createdBy == request.auth.uid;
-    }
-
-    function isOwnResource(resource) {
-      return resource.data.childId == request.auth.uid;
+    function isParentOf(userId) {
+      let userData = get(/databases/$(database)/documents/users/$(userId)).data;
+      return isParent() && userData.parentUid == request.auth.uid;
     }
 
     // Users collection
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if request.auth.uid == userId || (isParent() && get(/databases/$(database)/documents/users/$(userId)).data.parentUid == request.auth.uid);
+      allow write, delete: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        (isParent() && get(/databases/$(database)/documents/users/$(userId)).data.parentUid == request.auth.uid)
+      );
     }
 
     // Allowances collection
     match /allowances/{allowanceId} {
       allow read: if isAuthenticated() && (
         isParent() || 
-        (isChild() && isOwnResource(resource))
+        (isChild() && resource.data.childId == request.auth.uid)
       );
       allow write: if isAuthenticated() && isParent();
     }
@@ -45,7 +41,7 @@ service cloud.firestore {
     match /earnings/{earningId} {
       allow read: if isAuthenticated() && (
         isParent() || 
-        (isChild() && isOwnResource(resource))
+        (isChild() && resource.data.childId == request.auth.uid)
       );
       allow create, update: if isAuthenticated() && isParent();
       allow delete: if false; // Never allow deletion of earnings
@@ -53,24 +49,20 @@ service cloud.firestore {
 
     // Chores collection
     match /chores/{choreId} {
-      allow read: if isAuthenticated() && (
+      allow read: if isAuthenticated();
+      allow write, delete: if isAuthenticated() && (
         isParent() || 
-        (isChild() && isAssignedToUser(resource.data))
+        request.auth.uid == resource.data.assignedTo
       );
-      
-      allow create: if isAuthenticated() && isParent();
-      
-      allow update: if isAuthenticated() && (
+    }
+
+    // Completed chores collection
+    match /completedChores/{historyId} {
+      allow read: if isAuthenticated();
+      allow write, delete: if isAuthenticated() && (
         isParent() || 
-        (isChild() && isAssignedToUser(resource.data) && 
-         request.resource.data.diff(resource.data).affectedKeys()
-         .hasOnly(['status', 'completedAt', 'completedBy', 'updatedAt'])) ||
-        (isParent() && 
-         request.resource.data.diff(resource.data).affectedKeys()
-         .hasAny(['status', 'verifiedAt', 'verifiedBy', 'updatedAt', 'completedAt', 'completedBy']))
+        request.auth.uid == resource.data.userId
       );
-      
-      allow delete: if isAuthenticated() && isParent() && isChoreCreator(resource.data);
     }
 
     // Family collection
@@ -82,7 +74,7 @@ service cloud.firestore {
     match /rewards/{rewardId} {
       allow read: if isAuthenticated() && (
         isParent() || 
-        (isChild() && isOwnResource(resource))
+        (isChild() && resource.data.childId == request.auth.uid)
       );
       
       allow create: if isAuthenticated() && isParent() && 
@@ -95,7 +87,7 @@ service cloud.firestore {
     match /paymentSchedules/{scheduleId} {
       allow read: if isAuthenticated() && (
         isParent() || 
-        (isChild() && isOwnResource(resource))
+        (isChild() && resource.data.childId == request.auth.uid)
       );
       allow write: if isAuthenticated() && isParent();
     }
@@ -104,10 +96,19 @@ service cloud.firestore {
     match /payments/{paymentId} {
       allow read: if isAuthenticated() && (
         isParent() || 
-        (isChild() && isOwnResource(resource))
+        (isChild() && resource.data.childId == request.auth.uid)
       );
       allow create, update: if isAuthenticated() && isParent();
       allow delete: if false; // Never allow deletion of payments
+    }
+
+    // Allow parent to delete all child-related data
+    match /{collection}/{document=**} {
+      allow delete: if isAuthenticated() && isParent() && (
+        collection == "users" || 
+        collection == "chores" || 
+        collection == "completedChores"
+      );
     }
   }
 }

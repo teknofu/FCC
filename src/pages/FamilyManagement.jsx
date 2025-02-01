@@ -116,7 +116,12 @@ const FamilyManagement = () => {
     }
   };
 
-  const handleRemoveChild = async (childId) => {
+  const handleRemoveChild = async (childUid) => {
+    if (!childUid) {
+      setError("Invalid child account selected");
+      return;
+    }
+
     if (
       !window.confirm("Are you sure you want to remove this child account?")
     ) {
@@ -124,7 +129,14 @@ const FamilyManagement = () => {
     }
 
     try {
-      await removeChildAccount(childId);
+      setError(""); // Clear any previous errors
+      const result = await removeChildAccount(childUid);
+      if (result.success) {
+        // Update the local state to remove the child
+        setFamilyMembers((prevMembers) =>
+          prevMembers.filter((member) => member.uid !== childUid)
+        );
+      }
     } catch (error) {
       console.error("Error removing child account:", error);
       setError(error.message || "Failed to remove child account");
@@ -180,7 +192,7 @@ const FamilyManagement = () => {
                   </IconButton>
                   <IconButton
                     size="small"
-                    onClick={() => handleRemoveChild(member.id)}
+                    onClick={() => handleRemoveChild(member.uid)}
                     title="Remove"
                     color="error"
                   >
