@@ -72,6 +72,7 @@ const ChoreManagement = () => {
       (acc, day) => ({ ...acc, [day]: false }),
       {}
     ),
+    startDate: "",
   });
 
   useEffect(() => {
@@ -233,6 +234,7 @@ const ChoreManagement = () => {
         scheduledDays:
           chore.scheduledDays ||
           DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {}),
+        startDate: chore.startDate || "",
       });
       setSelectedChore(chore);
     } else {
@@ -246,6 +248,7 @@ const ChoreManagement = () => {
           (acc, day) => ({ ...acc, [day]: false }),
           {}
         ),
+        startDate: "",
       });
       setSelectedChore(null);
     }
@@ -265,13 +268,17 @@ const ChoreManagement = () => {
         (acc, day) => ({ ...acc, [day]: false }),
         {}
       ),
+      startDate: "",
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!choreForm.title || !choreForm.assignedTo) {
-      setError("Title and assigned child are required");
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+
+    // Validate startDate for monthly chores
+    if (choreForm.timeframe === "monthly" && !choreForm.startDate) {
+      setError("Please select a start date for monthly chores.");
       return;
     }
 
@@ -319,16 +326,25 @@ const ChoreManagement = () => {
     }
   };
 
+  const incrementMonthlyDate = (date) => {
+    const newDate = new Date(date);
+    newDate.setMonth(newDate.getMonth() + 1);
+    return newDate.toISOString().split('T')[0];
+  };
+
   const handleMarkComplete = async (choreId) => {
     try {
-      // Extract UID consistently with loadChores
       const userId = user?.uid || user?.user?.uid;
-      
       if (!userId) {
         throw new Error("User not authenticated");
       }
 
       const updatedChore = await markChoreComplete(choreId, userId);
+
+      // Increment the date if the chore is monthly
+      if (updatedChore.timeframe === "monthly" && updatedChore.startDate) {
+        updatedChore.startDate = incrementMonthlyDate(updatedChore.startDate);
+      }
 
       // Update the local chores list
       setChores((prevChores) =>
@@ -726,7 +742,7 @@ const ChoreManagement = () => {
                   <Grid item xs={12}>
                     {renderChildSelect()}
                   </Grid>
-                  {choreForm.timeframe === "daily" && (
+                  {choreForm.timeframe === "weekly" && (
                     <Grid item xs={12}>
                       <Typography variant="subtitle1" gutterBottom>
                         Schedule Days
@@ -745,6 +761,26 @@ const ChoreManagement = () => {
                           />
                         ))}
                       </FormGroup>
+                    </Grid>
+                  )}
+                  {choreForm.timeframe === "monthly" && (
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        label="Start Date"
+                        type="date"
+                        value={choreForm.startDate}
+                        onChange={(e) =>
+                          setChoreForm({
+                            ...choreForm,
+                            startDate: e.target.value,
+                          })
+                        }
+                        InputLabelProps={{
+                          shrink: true,
+                        }}
+                        required={choreForm.timeframe === "monthly"}
+                        fullWidth
+                      />
                     </Grid>
                   )}
                 </Grid>
@@ -777,17 +813,6 @@ const ChoreManagement = () => {
       >
         <RefreshIcon />
       </Fab>
-      {role === "parent" && (
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={resetRewardsToggle}
-              onChange={() => setResetRewardsToggle(!resetRewardsToggle)}
-            />
-          }
-          label="Reset Rewards"
-        />
-      )}
     </Box>
   );
 };
