@@ -56,6 +56,7 @@ const ChoreManagement = () => {
   const [filters, setFilters] = useState({
     status: "all",
     timeframe: "all",
+    dueToday: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -85,7 +86,7 @@ const ChoreManagement = () => {
         loadFamilyMembers(user.uid);
       }
     }
-  }, [role, user, filters.status, filters.timeframe]);
+  }, [role, user, filters.status, filters.timeframe, filters.dueToday]);
 
   useEffect(() => {
     const resetRecurringChores = async () => {
@@ -163,8 +164,6 @@ const ChoreManagement = () => {
         fetchedChores = await getChores(userId);
       }
 
-      
-
       // Apply filters
       let filteredChores = fetchedChores;
 
@@ -180,7 +179,19 @@ const ChoreManagement = () => {
         );
       }
 
-      
+      // Filter chores due today for child accounts
+      if (role === "child" && filters.dueToday) {
+        const today = new Date().toLocaleString('en-US', { weekday: 'long' });
+        filteredChores = filteredChores.filter((chore) => {
+          if (chore.status !== "pending") return false;
+          
+          if (chore.timeframe === "monthly") {
+            return chore.startDate === new Date().toISOString().split('T')[0];
+          }
+          
+          return chore.scheduledDays && chore.scheduledDays[today];
+        });
+      }
 
       setChores(filteredChores);
       setLoading(false);
@@ -201,7 +212,6 @@ const ChoreManagement = () => {
       setLoading(true);
       setError("");
       const members = await getFamilyMembers(uid);
-      
       setFamilyMembers(members);
 
       // Load stats for each child
@@ -209,7 +219,6 @@ const ChoreManagement = () => {
       for (const member of members) {
         if (member.role === "child" && member.uid) {
           const memberStats = await getChildStats(member.uid);
-          
           stats[member.uid] = memberStats;
         }
       }
@@ -480,7 +489,7 @@ const ChoreManagement = () => {
             </Box>
           </Grid>
 
-          {/* Filters - Only show status filter for children */}
+          {/* Filters */}
           <Grid item xs={12}>
             <Paper sx={{ p: 2 }}>
               <Grid container spacing={2}>
@@ -502,7 +511,7 @@ const ChoreManagement = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                {role === "parent" && (
+                {role === "parent" ? (
                   <Grid item xs={12} sm={6} md={4}>
                     <FormControl fullWidth>
                       <InputLabel>Timeframe</InputLabel>
@@ -519,6 +528,20 @@ const ChoreManagement = () => {
                         <MenuItem value="monthly">Monthly</MenuItem>
                       </Select>
                     </FormControl>
+                  </Grid>
+                ) : (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={filters.dueToday}
+                          onChange={(e) =>
+                            setFilters({ ...filters, dueToday: e.target.checked })
+                          }
+                        />
+                      }
+                      label="Show Only Due Today"
+                    />
                   </Grid>
                 )}
               </Grid>
@@ -563,11 +586,38 @@ const ChoreManagement = () => {
                       </Typography>
                       {chore.timeframe === "daily" && (
                         <Typography variant="body2">
-                          Days:{" "}
+                          Schedule: Daily on{" "}
                           {Object.entries(chore.scheduledDays || {})
                             .filter(([, checked]) => checked)
                             .map(([day]) => day)
                             .join(", ")}
+                        </Typography>
+                      )}
+                      {chore.timeframe === "weekly" && (
+                        <Typography variant="body2">
+                          Schedule: Weekly on{" "}
+                          {Object.entries(chore.scheduledDays || {})
+                            .filter(([, checked]) => checked)
+                            .map(([day]) => day)
+                            .join(", ")}
+                        </Typography>
+                      )}
+                      {chore.timeframe === "monthly" && (
+                        <Typography variant="body2">
+                          Schedule: Monthly starting {chore.startDate}
+                        </Typography>
+                      )}
+                      {/* Show next due date based on timeframe */}
+                      {chore.status === "pending" && (
+                        <Typography variant="body2" color="error">
+                          Due: {chore.timeframe === "monthly" 
+                            ? chore.startDate 
+                            : Object.entries(chore.scheduledDays || {})
+                                .filter(([, checked]) => checked)
+                                .map(([day]) => day)
+                                .includes(new Date().toLocaleString('en-US', { weekday: 'long' }))
+                            ? "Today"
+                            : "Next scheduled day"}
                         </Typography>
                       )}
                     </Grid>
