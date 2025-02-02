@@ -162,7 +162,7 @@ const ChoreManagement = () => {
       }
 
       // Apply filters
-      let filteredChores = fetchedChores.filter((chore) => {
+      const filteredChores = fetchedChores.filter((chore) => {
         // Status filter
         if (filters.status !== "all") {
           if (filters.status === "completed" && !chore.completed) return false;
@@ -175,10 +175,23 @@ const ChoreManagement = () => {
 
         // Due today filter
         if (filters.dueToday) {
-          const currentDay = new Date().toLocaleString("en-US", {
-            weekday: "long",
-          });
-          if (!chore.daysOfWeek?.includes(currentDay)) return false;
+          const today = new Date().toLocaleString("en-US", { weekday: "long" });
+          
+          // Daily chores are always due
+          if (chore.timeframe === "daily") return true;
+          
+          // Weekly chores - check if today is in scheduledDays
+          if (chore.timeframe === "weekly") {
+            return chore.scheduledDays && chore.scheduledDays[today];
+          }
+          
+          // Monthly chores - check if today matches startDate
+          if (chore.timeframe === "monthly") {
+            const currentDate = new Date().toISOString().split('T')[0];
+            return chore.startDate === currentDate;
+          }
+          
+          return false;
         }
 
         // Child filter
@@ -596,21 +609,24 @@ const ChoreManagement = () => {
                       </Select>
                     </FormControl>
                   </Grid>
-                ) : (
-                  <Grid item xs={12} sm={6} md={2}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={filters.dueToday}
-                          onChange={(e) =>
-                            setFilters({ ...filters, dueToday: e.target.checked })
-                          }
-                        />
-                      }
-                      label="Show Only Due Today"
-                    />
-                  </Grid>
-                )}
+                ) : null}
+
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={filters.dueToday}
+                        onChange={(e) =>
+                          setFilters({
+                            ...filters,
+                            dueToday: e.target.checked,
+                          })
+                        }
+                      />
+                    }
+                    label="Due Today"
+                  />
+                </Grid>
               </Grid>
             </Paper>
           </Grid>
