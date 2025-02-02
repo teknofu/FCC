@@ -213,7 +213,7 @@ const FinancialManagement = () => {
             indicatorColor="primary"
             textColor="primary"
           >
-            <Tab label="Allowances" />
+            
             <Tab label="Earnings & Payments" />
             <Tab label="History" />
           </Tabs>
@@ -224,17 +224,9 @@ const FinancialManagement = () => {
             </Box>
           ) : (
             <>
-              <TabPanel value={activeTab} index={0}>
-                <AllowanceSettings
-                  allowances={allowances}
-                  selectedChild={selectedChild}
-                  paymentSchedule={paymentSchedule}
-                  onAllowanceChange={loadFinancialData}
-                  loading={loading}
-                />
-              </TabPanel>
+              
 
-              <TabPanel value={activeTab} index={1}>
+              <TabPanel value={activeTab} index={0}>
                 <EarningsOverview
                   selectedChild={selectedChild}
                   earnings={earnings}
@@ -247,7 +239,7 @@ const FinancialManagement = () => {
                 />
               </TabPanel>
 
-              <TabPanel value={activeTab} index={2}>
+              <TabPanel value={activeTab} index={1}>
                 <TransactionHistory
                   earnings={earnings}
                   payments={paymentHistory}
