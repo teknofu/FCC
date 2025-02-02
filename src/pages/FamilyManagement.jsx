@@ -247,19 +247,7 @@ const FamilyManagement = () => {
                 shrink: true,
               }}
             />
-            <TextField
-              fullWidth
-              label="Weekly Allowance"
-              type="number"
-              value={formData.allowance}
-              onChange={(e) =>
-                setFormData({ ...formData, allowance: e.target.value })
-              }
-              margin="normal"
-              InputProps={{
-                startAdornment: <span>$</span>,
-              }}
-            />
+            
           </Box>
         </DialogContent>
         <DialogActions>
