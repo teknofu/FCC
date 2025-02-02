@@ -18,7 +18,8 @@ const initialFormState = {
   description: '',
   reward: '',
   timeframe: 'daily',
-  assignedTo: ''
+  assignedTo: '',
+  room: ''
 };
 
 const ChoreForm = ({ 
@@ -37,7 +38,8 @@ const ChoreForm = ({
         description: editChore.description || '',
         reward: editChore.reward || '',
         timeframe: editChore.timeframe || 'daily',
-        assignedTo: editChore.assignedTo || ''
+        assignedTo: editChore.assignedTo || '',
+        room: editChore.room || ''
       });
     } else {
       setFormData(initialFormState);
@@ -118,7 +120,26 @@ const ChoreForm = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel>Room</InputLabel>
+                <Select
+                  name="room"
+                  value={formData.room}
+                  onChange={handleChange}
+                  label="Room"
+                >
+                  <MenuItem value="Kitchen">Kitchen</MenuItem>
+                  <MenuItem value="Living Room">Living Room</MenuItem>
+                  <MenuItem value="Bedroom">Bedroom</MenuItem>
+                  <MenuItem value="Bathroom">Bathroom</MenuItem>
+                  <MenuItem value="Garage">Garage</MenuItem>
+                  <MenuItem value="Yard">Yard</MenuItem>
+                  <MenuItem value="Other">Other</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth required>
                 <InputLabel>Assign To</InputLabel>
                 <Select

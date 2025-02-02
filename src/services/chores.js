@@ -44,6 +44,7 @@ export const createChore = async (choreData, schedulePattern = null) => {
       status: 'pending',
       scheduledDays: choreData.scheduledDays || {},
       startDate: choreData.startDate || null,
+      room: choreData.room || '',
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -148,6 +149,7 @@ export const updateChore = async (choreId, choreData) => {
       completedAt: choreData.completedAt || null,
       verifiedAt: choreData.verifiedAt || null,
       verifiedBy: choreData.verifiedBy || null,
+      room: choreData.room || '', // Add room field
       updatedAt: serverTimestamp(),
       ...(choreData.resetRewards && { rewardsResetDate: serverTimestamp() })
     };

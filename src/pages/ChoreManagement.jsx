@@ -57,6 +57,8 @@ const ChoreManagement = () => {
     status: "all",
     timeframe: "all",
     dueToday: false,
+    child: "all",
+    room: "all",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -70,6 +72,7 @@ const ChoreManagement = () => {
     timeframe: "daily",
     assignedTo: "",
     startDate: "",
+    room: "",
   });
 
   useEffect(() => {
@@ -82,7 +85,7 @@ const ChoreManagement = () => {
         loadFamilyMembers(user.uid);
       }
     }
-  }, [role, user, filters.status, filters.timeframe, filters.dueToday]);
+  }, [role, user, filters.status, filters.timeframe, filters.dueToday, filters.child, filters.room]);
 
   useEffect(() => {
     const resetRecurringChores = async () => {
@@ -159,38 +162,48 @@ const ChoreManagement = () => {
       }
 
       // Apply filters
-      let filteredChores = fetchedChores;
+      const filteredChores = fetchedChores.filter((chore) => {
+        // Status filter
+        if (filters.status !== "all") {
+          if (filters.status === "completed" && !chore.completed) return false;
+          if (filters.status === "pending" && chore.completed) return false;
+        }
 
-      if (filters.status !== "all") {
-        filteredChores = filteredChores.filter(
-          (chore) => chore.status === filters.status
-        );
-      }
+        // Timeframe filter
+        if (filters.timeframe !== "all" && chore.timeframe !== filters.timeframe)
+          return false;
 
-      if (filters.timeframe !== "all") {
-        filteredChores = filteredChores.filter(
-          (chore) => chore.timeframe === filters.timeframe
-        );
-      }
-
-      // Filter chores due today for child accounts
-      if (role === "child" && filters.dueToday) {
-        const today = new Date().toLocaleString('en-US', { weekday: 'long' });
-        filteredChores = filteredChores.filter((chore) => {
-          if (chore.status !== "pending") return false;
+        // Due today filter
+        if (filters.dueToday) {
+          const today = new Date().toLocaleString("en-US", { weekday: "long" });
           
+          // Daily chores are always due
+          if (chore.timeframe === "daily") return true;
+          
+          // Weekly chores - check if today is in scheduledDays
+          if (chore.timeframe === "weekly") {
+            return chore.scheduledDays && chore.scheduledDays[today];
+          }
+          
+          // Monthly chores - check if today matches startDate
           if (chore.timeframe === "monthly") {
-            return chore.startDate === new Date().toISOString().split('T')[0];
+            const currentDate = new Date().toISOString().split('T')[0];
+            return chore.startDate === currentDate;
           }
           
-          if (chore.timeframe === "daily") {
-            return true; // Daily chores are always due today
-          }
-          
-          // Weekly chores
-          return chore.scheduledDays && chore.scheduledDays[today];
-        });
-      }
+          return false;
+        }
+
+        // Child filter
+        if (filters.child !== "all" && chore.assignedTo !== filters.child)
+          return false;
+
+        // Room filter
+        if (filters.room !== "all" && chore.room !== filters.room)
+          return false;
+
+        return true;
+      });
 
       setChores(filteredChores);
       setLoading(false);
@@ -239,6 +252,7 @@ const ChoreManagement = () => {
         timeframe: chore.timeframe,
         assignedTo: chore.assignedTo,
         startDate: chore.startDate || "",
+        room: chore.room || "",
       };
       
       // Only include scheduledDays for weekly chores
@@ -257,6 +271,7 @@ const ChoreManagement = () => {
         timeframe: "daily",
         assignedTo: "",
         startDate: "",
+        room: "",
       });
       setSelectedChore(null);
     }
@@ -273,6 +288,7 @@ const ChoreManagement = () => {
       timeframe: "daily",
       assignedTo: "",
       startDate: "",
+      room: "",
     });
   };
 
@@ -513,9 +529,9 @@ const ChoreManagement = () => {
           {/* Filters */}
           <Grid item xs={12}>
             <Paper sx={{ p: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControl fullWidth>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControl fullWidth size="small">
                     <InputLabel>Status</InputLabel>
                     <Select
                       value={filters.status}
@@ -525,15 +541,58 @@ const ChoreManagement = () => {
                       }
                     >
                       <MenuItem value="all">All</MenuItem>
-                      <MenuItem value="pending">Pending</MenuItem>
                       <MenuItem value="completed">Completed</MenuItem>
-                      <MenuItem value="verified">Verified</MenuItem>
-                      <MenuItem value="rejected">Rejected</MenuItem>
+                      <MenuItem value="pending">Pending</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
+
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Child</InputLabel>
+                    <Select
+                      value={filters.child}
+                      label="Child"
+                      onChange={(e) =>
+                        setFilters({ ...filters, child: e.target.value })
+                      }
+                    >
+                      <MenuItem value="all">All Children</MenuItem>
+                      {familyMembers
+                        .filter((member) => member.role === "child")
+                        .map((child) => (
+                          <MenuItem key={child.uid} value={child.uid}>
+                            {child.displayName}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Room</InputLabel>
+                    <Select
+                      value={filters.room}
+                      label="Room"
+                      onChange={(e) =>
+                        setFilters({ ...filters, room: e.target.value })
+                      }
+                    >
+                      <MenuItem value="all">All Rooms</MenuItem>
+                      <MenuItem value="Kitchen">Kitchen</MenuItem>
+                      <MenuItem value="Living Room">Living Room</MenuItem>
+                      <MenuItem value="Bedroom">Bedroom</MenuItem>
+                      <MenuItem value="Bathroom">Bathroom</MenuItem>
+                      <MenuItem value="Garage">Garage</MenuItem>
+                      <MenuItem value="Yard">Yard</MenuItem>
+                      <MenuItem value="Other">Other</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
                 {role === "parent" ? (
-                  <Grid item xs={12} sm={6} md={4}>
+                  <Grid item xs={12} sm={6} md={2}>
                     <FormControl fullWidth>
                       <InputLabel>Timeframe</InputLabel>
                       <Select
@@ -550,21 +609,24 @@ const ChoreManagement = () => {
                       </Select>
                     </FormControl>
                   </Grid>
-                ) : (
-                  <Grid item xs={12} sm={6} md={4}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={filters.dueToday}
-                          onChange={(e) =>
-                            setFilters({ ...filters, dueToday: e.target.checked })
-                          }
-                        />
-                      }
-                      label="Show Only Due Today"
-                    />
-                  </Grid>
-                )}
+                ) : null}
+
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={filters.dueToday}
+                        onChange={(e) =>
+                          setFilters({
+                            ...filters,
+                            dueToday: e.target.checked,
+                          })
+                        }
+                      />
+                    }
+                    label="Due Today"
+                  />
+                </Grid>
               </Grid>
             </Paper>
           </Grid>
@@ -811,6 +873,30 @@ const ChoreManagement = () => {
                   </Grid>
                   <Grid item xs={12}>
                     {renderChildSelect()}
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Room</InputLabel>
+                      <Select
+                        value={choreForm.room}
+                        label="Room"
+                        onChange={(e) =>
+                          setChoreForm({
+                            ...choreForm,
+                            room: e.target.value,
+                          })
+                        }
+                      >
+                        <MenuItem value="">Select Room</MenuItem>
+                        <MenuItem value="Kitchen">Kitchen</MenuItem>
+                        <MenuItem value="Living Room">Living Room</MenuItem>
+                        <MenuItem value="Bedroom">Bedroom</MenuItem>
+                        <MenuItem value="Bathroom">Bathroom</MenuItem>
+                        <MenuItem value="Garage">Garage</MenuItem>
+                        <MenuItem value="Yard">Yard</MenuItem>
+                        <MenuItem value="Other">Other</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
                   {choreForm.timeframe === "weekly" && (
                     <Grid item xs={12}>
