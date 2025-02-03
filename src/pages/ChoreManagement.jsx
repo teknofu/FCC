@@ -843,6 +843,7 @@ const ChoreManagement = () => {
                                 variant="outlined"
                                 color="warning"
                                 onClick={() => handleManualChoreReset(chore.id)}
+                                startIcon={<RefreshIcon />}
                               >
                                 Reset
                               </Button>

@@ -37,3 +37,7 @@
   - PaymentProcessor
   - EarningsOverview
 - Removed deprecated defaultProps pattern to prevent future React warnings
+
+### Fixed
+- Transaction history now shows actual chore name instead of generic "chore" type in the description field
+- Reset button in chore management now includes a refresh icon for better visual clarity
