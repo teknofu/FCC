@@ -15,7 +15,12 @@ import PropTypes from 'prop-types';
 /**
  * Form component for managing payment schedules
  */
-const PaymentScheduleForm = ({ schedule, onSubmit, disabled, loading }) => {
+const PaymentScheduleForm = ({ 
+  schedule = null, 
+  onSubmit, 
+  disabled = false, 
+  loading = false 
+}) => {
   const [frequency, setFrequency] = useState('biweekly');
   const [error, setError] = useState('');
 
@@ -97,12 +102,6 @@ PaymentScheduleForm.propTypes = {
   onSubmit: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
   loading: PropTypes.bool
-};
-
-PaymentScheduleForm.defaultProps = {
-  schedule: null,
-  disabled: false,
-  loading: false
 };
 
 export default PaymentScheduleForm;
