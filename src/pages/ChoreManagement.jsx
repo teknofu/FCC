@@ -9,6 +9,8 @@ import {
   markChoreComplete,
   verifyChore,
   getChildStats,
+  addParentAccess,
+  removeParentAccess,
 } from "../services/chores";
 import { getFamilyMembers } from "../services/family";
 import {
@@ -53,6 +55,9 @@ const ChoreManagement = () => {
   const [childStats, setChildStats] = useState({});
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedChore, setSelectedChore] = useState(null);
+  const [parentAccessDialog, setParentAccessDialog] = useState(false);
+  const [availableParents, setAvailableParents] = useState([]);
+  const [selectedParent, setSelectedParent] = useState("");
   const [filters, setFilters] = useState({
     status: "all",
     timeframe: "all",
@@ -84,9 +89,10 @@ const ChoreManagement = () => {
     if (user && role) {
       loadChores();
 
-      // Only load family members for parents
+      // Only load family members and parents for parents
       if (role === "parent" && user.uid) {
         loadFamilyMembers(user.uid);
+        loadAvailableParents();
       }
     }
   }, [role, user, filters.status, filters.timeframe, filters.dueToday, filters.child, filters.room]);
@@ -147,6 +153,27 @@ const ChoreManagement = () => {
     }
   }, [chores, role, user]);
 
+  // Load available parents
+  const loadAvailableParents = async () => {
+    try {
+      // Get all family members
+      const allMembers = await getFamilyMembers(user.uid);
+
+      // Filter to only include parents (excluding current user)
+      const parents = allMembers.filter(member => {
+        const isParent = member.role === 'parent';
+        const isNotCurrentUser = member.uid !== user.uid;
+        const hasRequiredFields = member.uid && (member.displayName || member.email);
+        return isParent && isNotCurrentUser && hasRequiredFields;
+      });
+
+      setAvailableParents(parents);
+    } catch (error) {
+      console.error("Error loading parents:", error);
+      setError("Failed to load parents");
+    }
+  };
+
   const loadChores = async () => {
     try {
       setLoading(true);
@@ -181,21 +208,21 @@ const ChoreManagement = () => {
         // Due today filter
         if (filters.dueToday) {
           const today = new Date().toLocaleString("en-US", { weekday: "long" });
-          
+
           // Daily chores are always due
           if (chore.timeframe === "daily") return true;
-          
+
           // Weekly chores - check if today is in scheduledDays
           if (chore.timeframe === "weekly") {
             return chore.scheduledDays && chore.scheduledDays[today];
           }
-          
+
           // Monthly chores - check if today matches startDate
           if (chore.timeframe === "monthly") {
-            const currentDate = new Date().toISOString().split('T')[0];
+            const currentDate = new Date().toISOString().split("T")[0];
             return chore.startDate === currentDate;
           }
-          
+
           return false;
         }
 
@@ -248,6 +275,34 @@ const ChoreManagement = () => {
     }
   };
 
+  // Handle adding parent access
+  const handleAddParentAccess = async () => {
+    if (!selectedChore || !selectedParent) return;
+
+    try {
+      await addParentAccess(selectedChore.id, selectedParent);
+      // Refresh chores list
+      loadChores();
+      setParentAccessDialog(false);
+      setSelectedParent("");
+    } catch (error) {
+      console.error("Error adding parent access:", error);
+      setError("Failed to add parent access");
+    }
+  };
+
+  // Handle removing parent access
+  const handleRemoveParentAccess = async (choreId, parentId) => {
+    try {
+      await removeParentAccess(choreId, parentId);
+      // Refresh chores list
+      loadChores();
+    } catch (error) {
+      console.error("Error removing parent access:", error);
+      setError("Failed to remove parent access");
+    }
+  };
+
   const handleOpenDialog = (chore = null) => {
     if (chore) {
       const formData = {
@@ -259,13 +314,13 @@ const ChoreManagement = () => {
         startDate: chore.startDate || "",
         room: chore.room || "",
       };
-      
+
       // Only include scheduledDays for weekly chores
       if (chore.timeframe === "weekly") {
-        formData.scheduledDays = chore.scheduledDays || 
+        formData.scheduledDays = chore.scheduledDays ||
           DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {});
       }
-      
+
       setChoreForm(formData);
       setSelectedChore(chore);
     } else {
@@ -359,7 +414,7 @@ const ChoreManagement = () => {
   const incrementMonthlyDate = (date) => {
     const newDate = new Date(date);
     newDate.setMonth(newDate.getMonth() + 1);
-    return newDate.toISOString().split('T')[0];
+    return newDate.toISOString().split("T")[0];
   };
 
   const handleMarkComplete = async (choreId) => {
@@ -434,13 +489,11 @@ const ChoreManagement = () => {
         verifiedBy: null,
         completionComment: null,
         updatedAt: new Date(),
-        resetRewards: resetRewardsToggle
+        resetRewards: resetRewardsToggle,
       });
 
       // Reload chores to reflect changes
       await loadChores();
-
-      
     } catch (error) {
       console.error("Error manually resetting chore:", error);
       setError(error.message || "Failed to reset chore");
@@ -451,13 +504,13 @@ const ChoreManagement = () => {
 
   const getNextScheduledDay = (scheduledDays) => {
     if (!scheduledDays) return null;
-    
-    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
+
+    const today = new Date().toLocaleString("en-US", { weekday: "long" });
     const daysOrder = [...DAYS_OF_WEEK]; // Use our existing DAYS_OF_WEEK array
-    
+
     // Find today's index
     const todayIndex = daysOrder.indexOf(today);
-    
+
     // Check each day starting from tomorrow
     for (let i = 1; i <= 7; i++) {
       const nextIndex = (todayIndex + i) % 7;
@@ -469,43 +522,11 @@ const ChoreManagement = () => {
     return null;
   };
 
-  const renderChildSelect = () => (
-    <FormControl fullWidth sx={{ mb: 2 }}>
-      <InputLabel>Assign To</InputLabel>
-      <Select
-        value={choreForm.assignedTo}
-        onChange={(e) =>
-          setChoreForm({ ...choreForm, assignedTo: e.target.value })
-        }
-        label="Assign To"
-        disabled={loading}
-      >
-        {familyMembers
-          .filter((member) => member.role === "child" && member.uid)
-          .map((child) => (
-            <MenuItem key={`child-select-${child.uid}`} value={child.uid}>
-              {child.displayName || child.email || "Unnamed Child"}
-            </MenuItem>
-          ))}
-      </Select>
-    </FormControl>
-  );
-
-  const renderChildStats = (childId) => {
-    const stats = childStats[childId] || {};
-    return (
-      <Box sx={{ mt: 1 }}>
-        <Typography variant="body2" color="text.secondary">
-          Completed: {stats.completedCount || 0} | Pending: {stats.pendingCount || 0}
-        </Typography>
-      </Box>
-    );
-  };
-
-  const showAddButton = role === "parent";
-
-  const handleRefresh = () => {
-    loadChores();
+  const handleOpenParentAccessDialog = (chore) => {
+    setSelectedChore(chore);
+    // Refresh available parents list
+    loadAvailableParents();
+    setParentAccessDialog(true);
   };
 
   const renderChoreComment = (chore) => {
@@ -524,6 +545,10 @@ const ChoreManagement = () => {
     return null;
   };
 
+  const handleRefresh = () => {
+    loadChores();
+  };
+
   return (
     <Box sx={{ position: "relative", minHeight: "100vh" }}>
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -538,7 +563,7 @@ const ChoreManagement = () => {
               <Typography variant="h4">
                 {role === "parent" ? "Manage Chores" : "My Chores"}
               </Typography>
-              {showAddButton && (
+              {role === "parent" && (
                 <Button
                   variant="contained"
                   color="primary"
@@ -691,16 +716,7 @@ const ChoreManagement = () => {
                                 ?.displayName || "Unknown"}
                             </Typography>
                           )}
-                          {chore.completionComment && (
-                            <Box sx={{ mt: 1 }}>
-                              <Typography variant="subtitle2" color="textSecondary">
-                                Child's Comment:
-                              </Typography>
-                              <Typography variant="body2" sx={{ pl: 2, fontStyle: 'italic' }}>
-                                "{chore.completionComment}"
-                              </Typography>
-                            </Box>
-                          )}
+                          {renderChoreComment(chore)}
                           {chore.verificationComment && chore.status === "verified" && (
                             <Box sx={{ mt: 1 }}>
                               <Typography variant="subtitle2" color="textSecondary">
@@ -753,32 +769,32 @@ const ChoreManagement = () => {
                       {/* Show next due date based on timeframe */}
                       {chore.status === "pending" && (
                         <Typography variant="body2" color="error">
-                          Due: {chore.timeframe === "monthly" 
-                            ? chore.startDate 
+                          Due: {chore.timeframe === "monthly"
+                            ? chore.startDate
                             : chore.timeframe === "daily"
-                            ? "Today"
-                            : Object.entries(chore.scheduledDays || {})
-                                .filter(([, checked]) => checked)
-                                .map(([day]) => day)
-                                .includes(new Date().toLocaleString('en-US', { weekday: 'long' }))
-                            ? "Today"
-                            : getNextScheduledDay(chore.scheduledDays) 
-                              ? `Next ${getNextScheduledDay(chore.scheduledDays)}`
-                              : "No days scheduled"}
+                              ? "Today"
+                              : Object.entries(chore.scheduledDays || {})
+                                  .filter(([, checked]) => checked)
+                                  .map(([day]) => day)
+                                  .includes(new Date().toLocaleString("en-US", { weekday: "long" }))
+                              ? "Today"
+                              : getNextScheduledDay(chore.scheduledDays)
+                                ? `Next ${getNextScheduledDay(chore.scheduledDays)}`
+                                : "No days scheduled"}
                         </Typography>
                       )}
                     </Grid>
                     <Grid item xs={12} sm={3}>
-                      <Box 
-                        display="flex" 
-                        gap={1} 
+                      <Box
+                        display="flex"
+                        gap={1}
                         flexWrap="wrap"
                         justifyContent="flex-start"
-                        sx={{ 
-                          '& .MuiButton-root': { 
-                            minWidth: 'auto',
-                            mb: 1 
-                          }
+                        sx={{
+                          "& .MuiButton-root": {
+                            minWidth: "auto",
+                            mb: 1,
+                          },
                         }}
                       >
                         {role === "parent" && (
@@ -829,6 +845,14 @@ const ChoreManagement = () => {
                             onClick={() => setVerifyingChore(chore)}
                           >
                             Verify
+                          </Button>
+                        )}
+                        {role === "parent" && (
+                          <Button
+                            size="small"
+                            onClick={() => handleOpenParentAccessDialog(chore)}
+                          >
+                            Manage Access
                           </Button>
                         )}
                       </Box>
@@ -1023,114 +1047,6 @@ const ChoreManagement = () => {
       >
         <RefreshIcon />
       </Fab>
-
-      {/* Add completion dialog */}
-      <Dialog
-        open={!!completingChoreId}
-        onClose={() => {
-          setCompletingChoreId(null);
-          setCompletionComment('');
-        }}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Complete Chore</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" color="textSecondary" gutterBottom>
-              Add a comment about how you completed this chore or why you didn't complete it (optional):
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              variant="outlined"
-              placeholder="Example: I cleaned under the bed too!"
-              value={completionComment}
-              onChange={(e) => setCompletionComment(e.target.value)}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => {
-              setCompletingChoreId(null);
-              setCompletionComment('');
-            }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="contained" 
-            color="primary"
-            onClick={handleSubmitCompletion}
-          >
-            Mark Complete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Verification Dialog */}
-      <Dialog 
-        open={!!verifyingChore} 
-        onClose={() => {
-          setVerifyingChore(null);
-          setVerifyComment("");
-        }}
-        maxWidth="sm" 
-        fullWidth
-      >
-        <DialogTitle>
-          Verify Chore: {verifyingChore?.title}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" color="textSecondary">
-              Child's Comment:
-            </Typography>
-            <Typography variant="body1" sx={{ pl: 2, fontStyle: 'italic', mb: 2 }}>
-              {verifyingChore?.completionComment || "No comment provided"}
-            </Typography>
-
-            <Typography variant="subtitle2" color="textSecondary">
-              Add Your Feedback (Optional):
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              placeholder="Add your feedback about the chore completion..."
-              value={verifyComment}
-              onChange={(e) => setVerifyComment(e.target.value)}
-              sx={{ mt: 1 }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => {
-              setVerifyingChore(null);
-              setVerifyComment("");
-            }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="contained" 
-            color="error"
-            onClick={() => handleVerify(verifyingChore.id, false)}
-          >
-            Reject
-          </Button>
-          <Button 
-            variant="contained" 
-            color="primary"
-            onClick={() => handleVerify(verifyingChore.id, true)}
-          >
-            Approve
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };
