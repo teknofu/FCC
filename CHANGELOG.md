@@ -37,3 +37,8 @@
   - PaymentProcessor
   - EarningsOverview
 - Removed deprecated defaultProps pattern to prevent future React warnings
+
+### Bug Fixes
+- Fixed uncaught TypeError when selecting days in weekly chore schedule
+  - Properly initialize scheduledDays when switching to weekly timeframe
+  - Ensure scheduledDays object exists before accessing properties
