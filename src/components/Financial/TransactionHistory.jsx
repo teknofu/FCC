@@ -57,7 +57,9 @@ const TransactionHistory = ({
       ...earning,
       type: 'earning',
       date: earning.createdAt,
-      description: earning.source?.type || 'Unknown earning'
+      description: earning.source?.type === 'chore' 
+        ? earning.source?.choreName || 'Unnamed Chore'
+        : earning.source?.type || 'Unknown earning'
     })),
     ...payments.map(payment => ({
       ...payment,
