@@ -41,3 +41,7 @@
 ### Fixed
 - Transaction history now shows actual chore name instead of generic "chore" type in the description field
 - Reset button in chore management now includes a refresh icon for better visual clarity
+### Bug Fixes
+- Fixed uncaught TypeError when selecting days in weekly chore schedule
+  - Properly initialize scheduledDays when switching to weekly timeframe
+  - Ensure scheduledDays object exists before accessing properties

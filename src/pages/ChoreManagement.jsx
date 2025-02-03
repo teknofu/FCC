@@ -82,6 +82,7 @@ const ChoreManagement = () => {
     assignedTo: "",
     startDate: "",
     room: "",
+    scheduledDays: null
   });
 
   useEffect(() => {
@@ -313,13 +314,10 @@ const ChoreManagement = () => {
         assignedTo: chore.assignedTo,
         startDate: chore.startDate || "",
         room: chore.room || "",
+        scheduledDays: chore.timeframe === "weekly" ? 
+          (chore.scheduledDays || DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {})) 
+          : null
       };
-
-      // Only include scheduledDays for weekly chores
-      if (chore.timeframe === "weekly") {
-        formData.scheduledDays = chore.scheduledDays ||
-          DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {});
-      }
 
       setChoreForm(formData);
       setSelectedChore(chore);
@@ -332,6 +330,7 @@ const ChoreManagement = () => {
         assignedTo: "",
         startDate: "",
         room: "",
+        scheduledDays: null
       });
       setSelectedChore(null);
     }
@@ -349,6 +348,7 @@ const ChoreManagement = () => {
       assignedTo: "",
       startDate: "",
       room: "",
+      scheduledDays: null
     });
   };
 
@@ -460,13 +460,19 @@ const ChoreManagement = () => {
   };
 
   const handleDayToggle = (day) => {
-    setChoreForm((prev) => ({
-      ...prev,
-      scheduledDays: {
-        ...prev.scheduledDays,
-        [day]: !prev.scheduledDays[day],
-      },
-    }));
+    setChoreForm((prev) => {
+      // Initialize scheduledDays if it doesn't exist
+      const currentScheduledDays = prev.scheduledDays || 
+        DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {});
+
+      return {
+        ...prev,
+        scheduledDays: {
+          ...currentScheduledDays,
+          [day]: !currentScheduledDays[day],
+        },
+      };
+    });
   };
 
   const handleManualChoreReset = async (choreId) => {
@@ -958,12 +964,19 @@ const ChoreManagement = () => {
                       <Select
                         value={choreForm.timeframe}
                         label="Timeframe"
-                        onChange={(e) =>
-                          setChoreForm({
-                            ...choreForm,
-                            timeframe: e.target.value,
-                          })
-                        }
+                        onChange={(e) => {
+                          const newTimeframe = e.target.value;
+                          setChoreForm(prev => ({
+                            ...prev,
+                            timeframe: newTimeframe,
+                            // Initialize scheduledDays when switching to weekly, clear it otherwise
+                            scheduledDays: newTimeframe === 'weekly' 
+                              ? DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {})
+                              : null,
+                            // Clear startDate when switching from monthly
+                            startDate: newTimeframe === 'monthly' ? prev.startDate : ''
+                          }));
+                        }}
                       >
                         <MenuItem value="daily">Daily</MenuItem>
                         <MenuItem value="weekly">Weekly</MenuItem>
