@@ -549,6 +549,28 @@ const ChoreManagement = () => {
     loadChores();
   };
 
+  const renderChildSelect = () => (
+    <FormControl fullWidth sx={{ mb: 2 }}>
+      <InputLabel>Assign To</InputLabel>
+      <Select
+        value={choreForm.assignedTo}
+        onChange={(e) =>
+          setChoreForm({ ...choreForm, assignedTo: e.target.value })
+        }
+        label="Assign To"
+        disabled={loading}
+      >
+        {familyMembers
+          .filter((member) => member.role === "child" && member.uid)
+          .map((child) => (
+            <MenuItem key={`child-select-${child.uid}`} value={child.uid}>
+              {child.displayName || child.email || "Unnamed Child"}
+            </MenuItem>
+          ))}
+      </Select>
+    </FormControl>
+  );
+
   return (
     <Box sx={{ position: "relative", minHeight: "100vh" }}>
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -825,6 +847,13 @@ const ChoreManagement = () => {
                                 Reset
                               </Button>
                             )}
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => handleOpenParentAccessDialog(chore)}
+                            >
+                              Manage Access
+                            </Button>
                           </>
                         )}
                         {chore.status === "pending" && (
@@ -845,14 +874,6 @@ const ChoreManagement = () => {
                             onClick={() => setVerifyingChore(chore)}
                           >
                             Verify
-                          </Button>
-                        )}
-                        {role === "parent" && (
-                          <Button
-                            size="small"
-                            onClick={() => handleOpenParentAccessDialog(chore)}
-                          >
-                            Manage Access
                           </Button>
                         )}
                       </Box>
@@ -1032,6 +1053,77 @@ const ChoreManagement = () => {
             </DialogActions>
           </Dialog>
         )}
+
+        {/* Parent Access Management Dialog */}
+        <Dialog
+          open={parentAccessDialog}
+          onClose={() => setParentAccessDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Manage Parent Access</DialogTitle>
+          <DialogContent>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1">Current Access:</Typography>
+              <Box sx={{ mt: 1 }}>
+                {/* Show current parent (creator) */}
+                <Typography variant="body2" color="textSecondary">
+                  {familyMembers.find(m => m.uid === selectedChore?.createdBy)?.displayName || "Unknown"} (Creator)
+                </Typography>
+                {/* Show other parents with access */}
+                {selectedChore?.parentAccess?.map(parentId => {
+                  const parent = familyMembers.find(m => m.uid === parentId);
+                  return (
+                    <Box key={parentId} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                      <Typography variant="body2" color="textSecondary">
+                        {parent?.displayName || parent?.email || "Unknown Parent"}
+                      </Typography>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleRemoveParentAccess(selectedChore.id, parentId)}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  );
+                })}
+              </Box>
+
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle1">Add Parent Access:</Typography>
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Select Parent</InputLabel>
+                    <Select
+                      value={selectedParent}
+                      label="Select Parent"
+                      onChange={(e) => setSelectedParent(e.target.value)}
+                    >
+                      {availableParents
+                        .filter(parent => !selectedChore?.parentAccess?.includes(parent.uid))
+                        .map((parent) => (
+                          <MenuItem key={parent.uid} value={parent.uid}>
+                            {parent.displayName || parent.email}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="contained"
+                    onClick={handleAddParentAccess}
+                    disabled={!selectedParent}
+                  >
+                    Add
+                  </Button>
+                </Box>
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setParentAccessDialog(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
       </Container>
       <Fab
         color="primary"
