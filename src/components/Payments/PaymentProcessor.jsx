@@ -19,7 +19,12 @@ import {
 } from '@mui/material';
 import PropTypes from 'prop-types';
 
-const PaymentProcessor = ({ onSubmit, unpaidEarnings = [], loading, disabled }) => {
+const PaymentProcessor = ({ 
+  onSubmit, 
+  unpaidEarnings = [], 
+  loading = false, 
+  disabled = false 
+}) => {
   const [openConfirm, setOpenConfirm] = useState(false);
   const [paymentNote, setPaymentNote] = useState('');
   const [markAllPaid, setMarkAllPaid] = useState(true);
@@ -146,12 +151,6 @@ PaymentProcessor.propTypes = {
   })),
   loading: PropTypes.bool,
   disabled: PropTypes.bool
-};
-
-PaymentProcessor.defaultProps = {
-  unpaidEarnings: [],
-  loading: false,
-  disabled: false
 };
 
 export default PaymentProcessor;

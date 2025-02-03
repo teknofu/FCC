@@ -17,14 +17,14 @@ import PaymentProcessor from '../Payments/PaymentProcessor';
  * Component for displaying earnings overview and processing payments
  */
 const EarningsOverview = ({
-  selectedChild,
-  earnings,
-  totalEarnings,
-  paymentSchedule,
+  selectedChild = null,
+  earnings = [],
+  totalEarnings = 0,
+  paymentSchedule = null,
   onScheduleSubmit,
   onPaymentSubmit,
-  loading,
-  error
+  loading = false,
+  error = ''
 }) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -143,15 +143,6 @@ EarningsOverview.propTypes = {
   onPaymentSubmit: PropTypes.func.isRequired,
   loading: PropTypes.bool,
   error: PropTypes.string
-};
-
-EarningsOverview.defaultProps = {
-  selectedChild: null,
-  earnings: [],
-  totalEarnings: 0,
-  paymentSchedule: null,
-  loading: false,
-  error: ''
 };
 
 export default EarningsOverview;
