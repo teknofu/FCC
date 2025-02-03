@@ -9,6 +9,8 @@ import {
   markChoreComplete,
   verifyChore,
   getChildStats,
+  addParentAccess,
+  removeParentAccess,
 } from "../services/chores";
 import { getFamilyMembers } from "../services/family";
 import {
@@ -53,6 +55,9 @@ const ChoreManagement = () => {
   const [childStats, setChildStats] = useState({});
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedChore, setSelectedChore] = useState(null);
+  const [parentAccessDialog, setParentAccessDialog] = useState(false);
+  const [availableParents, setAvailableParents] = useState([]);
+  const [selectedParent, setSelectedParent] = useState("");
   const [filters, setFilters] = useState({
     status: "all",
     timeframe: "all",
@@ -80,9 +85,10 @@ const ChoreManagement = () => {
     if (user && role) {
       loadChores();
 
-      // Only load family members for parents
+      // Only load family members and parents for parents
       if (role === "parent" && user.uid) {
         loadFamilyMembers(user.uid);
+        loadAvailableParents();
       }
     }
   }, [role, user, filters.status, filters.timeframe, filters.dueToday, filters.child, filters.room]);
@@ -142,6 +148,27 @@ const ChoreManagement = () => {
     }
   }, [chores, role, user]);
 
+  // Load available parents
+  const loadAvailableParents = async () => {
+    try {
+      // Get all family members
+      const allMembers = await getFamilyMembers(user.uid);
+
+      // Filter to only include parents (excluding current user)
+      const parents = allMembers.filter(member => {
+        const isParent = member.role === 'parent';
+        const isNotCurrentUser = member.uid !== user.uid;
+        const hasRequiredFields = member.uid && (member.displayName || member.email);
+        return isParent && isNotCurrentUser && hasRequiredFields;
+      });
+
+      setAvailableParents(parents);
+    } catch (error) {
+      console.error("Error loading parents:", error);
+      setError("Failed to load parents");
+    }
+  };
+
   const loadChores = async () => {
     try {
       setLoading(true);
@@ -176,21 +203,21 @@ const ChoreManagement = () => {
         // Due today filter
         if (filters.dueToday) {
           const today = new Date().toLocaleString("en-US", { weekday: "long" });
-          
+
           // Daily chores are always due
           if (chore.timeframe === "daily") return true;
-          
+
           // Weekly chores - check if today is in scheduledDays
           if (chore.timeframe === "weekly") {
             return chore.scheduledDays && chore.scheduledDays[today];
           }
-          
+
           // Monthly chores - check if today matches startDate
           if (chore.timeframe === "monthly") {
-            const currentDate = new Date().toISOString().split('T')[0];
+            const currentDate = new Date().toISOString().split("T")[0];
             return chore.startDate === currentDate;
           }
-          
+
           return false;
         }
 
@@ -243,6 +270,34 @@ const ChoreManagement = () => {
     }
   };
 
+  // Handle adding parent access
+  const handleAddParentAccess = async () => {
+    if (!selectedChore || !selectedParent) return;
+
+    try {
+      await addParentAccess(selectedChore.id, selectedParent);
+      // Refresh chores list
+      loadChores();
+      setParentAccessDialog(false);
+      setSelectedParent("");
+    } catch (error) {
+      console.error("Error adding parent access:", error);
+      setError("Failed to add parent access");
+    }
+  };
+
+  // Handle removing parent access
+  const handleRemoveParentAccess = async (choreId, parentId) => {
+    try {
+      await removeParentAccess(choreId, parentId);
+      // Refresh chores list
+      loadChores();
+    } catch (error) {
+      console.error("Error removing parent access:", error);
+      setError("Failed to remove parent access");
+    }
+  };
+
   const handleOpenDialog = (chore = null) => {
     if (chore) {
       const formData = {
@@ -254,13 +309,13 @@ const ChoreManagement = () => {
         startDate: chore.startDate || "",
         room: chore.room || "",
       };
-      
+
       // Only include scheduledDays for weekly chores
       if (chore.timeframe === "weekly") {
-        formData.scheduledDays = chore.scheduledDays || 
+        formData.scheduledDays = chore.scheduledDays ||
           DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {});
       }
-      
+
       setChoreForm(formData);
       setSelectedChore(chore);
     } else {
@@ -354,7 +409,7 @@ const ChoreManagement = () => {
   const incrementMonthlyDate = (date) => {
     const newDate = new Date(date);
     newDate.setMonth(newDate.getMonth() + 1);
-    return newDate.toISOString().split('T')[0];
+    return newDate.toISOString().split("T")[0];
   };
 
   const handleMarkComplete = async (choreId) => {
@@ -426,13 +481,11 @@ const ChoreManagement = () => {
         verifiedAt: null,
         verifiedBy: null,
         updatedAt: new Date(),
-        resetRewards: resetRewardsToggle
+        resetRewards: resetRewardsToggle,
       });
 
       // Reload chores to reflect changes
       await loadChores();
-
-      
     } catch (error) {
       console.error("Error manually resetting chore:", error);
       setError(error.message || "Failed to reset chore");
@@ -443,13 +496,13 @@ const ChoreManagement = () => {
 
   const getNextScheduledDay = (scheduledDays) => {
     if (!scheduledDays) return null;
-    
-    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
+
+    const today = new Date().toLocaleString("en-US", { weekday: "long" });
     const daysOrder = [...DAYS_OF_WEEK]; // Use our existing DAYS_OF_WEEK array
-    
+
     // Find today's index
     const todayIndex = daysOrder.indexOf(today);
-    
+
     // Check each day starting from tomorrow
     for (let i = 1; i <= 7; i++) {
       const nextIndex = (todayIndex + i) % 7;
@@ -498,6 +551,13 @@ const ChoreManagement = () => {
 
   const handleRefresh = () => {
     loadChores();
+  };
+
+  const handleOpenParentAccessDialog = (chore) => {
+    setSelectedChore(chore);
+    // Refresh available parents list
+    loadAvailableParents();
+    setParentAccessDialog(true);
   };
 
   return (
@@ -689,32 +749,32 @@ const ChoreManagement = () => {
                       {/* Show next due date based on timeframe */}
                       {chore.status === "pending" && (
                         <Typography variant="body2" color="error">
-                          Due: {chore.timeframe === "monthly" 
-                            ? chore.startDate 
+                          Due: {chore.timeframe === "monthly"
+                            ? chore.startDate
                             : chore.timeframe === "daily"
-                            ? "Today"
-                            : Object.entries(chore.scheduledDays || {})
-                                .filter(([, checked]) => checked)
-                                .map(([day]) => day)
-                                .includes(new Date().toLocaleString('en-US', { weekday: 'long' }))
-                            ? "Today"
-                            : getNextScheduledDay(chore.scheduledDays) 
-                              ? `Next ${getNextScheduledDay(chore.scheduledDays)}`
-                              : "No days scheduled"}
+                              ? "Today"
+                              : Object.entries(chore.scheduledDays || {})
+                                  .filter(([, checked]) => checked)
+                                  .map(([day]) => day)
+                                  .includes(new Date().toLocaleString("en-US", { weekday: "long" }))
+                              ? "Today"
+                              : getNextScheduledDay(chore.scheduledDays)
+                                ? `Next ${getNextScheduledDay(chore.scheduledDays)}`
+                                : "No days scheduled"}
                         </Typography>
                       )}
                     </Grid>
                     <Grid item xs={12} sm={3}>
-                      <Box 
-                        display="flex" 
-                        gap={1} 
+                      <Box
+                        display="flex"
+                        gap={1}
                         flexWrap="wrap"
                         justifyContent="flex-start"
-                        sx={{ 
-                          '& .MuiButton-root': { 
-                            minWidth: 'auto',
-                            mb: 1 
-                          }
+                        sx={{
+                          "& .MuiButton-root": {
+                            minWidth: "auto",
+                            mb: 1,
+                          },
                         }}
                       >
                         {role === "parent" && (
@@ -776,6 +836,14 @@ const ChoreManagement = () => {
                               Reject
                             </Button>
                           </>
+                        )}
+                        {role === "parent" && (
+                          <Button
+                            size="small"
+                            onClick={() => handleOpenParentAccessDialog(chore)}
+                          >
+                            Manage Access
+                          </Button>
                         )}
                       </Box>
                     </Grid>
@@ -954,21 +1022,102 @@ const ChoreManagement = () => {
             </DialogActions>
           </Dialog>
         )}
+
+        {/* Parent Access Dialog */}
+        <Dialog
+          open={parentAccessDialog}
+          onClose={() => setParentAccessDialog(false)}
+        >
+          <DialogTitle>Manage Parent Access</DialogTitle>
+          <DialogContent>
+            <Box sx={{ minWidth: 300, mt: 2 }}>
+              {availableParents.length > 0 && (
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Select Parent</InputLabel>
+                  <Select
+                    value={selectedParent}
+                    onChange={(e) => setSelectedParent(e.target.value)}
+                  >
+                    {availableParents
+                      .filter((parent) => !selectedChore?.parentAccess?.includes(parent.uid))
+                      .map((parent) => (
+                        <MenuItem key={parent.uid} value={parent.uid}>
+                          {parent.displayName || parent.email || "Unknown Parent"}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+              )}
+
+              {selectedChore?.parentAccess?.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1">Current Access:</Typography>
+                  {selectedChore.parentAccess.map((parentId) => {
+                    // Find parent in availableParents or check if it's the current user
+                    const parent = parentId === user.uid ? user : availableParents.find((p) => p.uid === parentId);
+                    return (
+                      <Box
+                        key={parentId}
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          my: 1,
+                        }}
+                      >
+                        <Typography>
+                          {parent ? (parent.displayName || parent.email) : "Unknown Parent"}
+                          {parentId === user.uid && " (You)"}
+                        </Typography>
+                        {parentId !== user.uid && (
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => handleRemoveParentAccess(selectedChore.id, parentId)}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
+
+              {availableParents.length === 0 && (
+                <Typography color="text.secondary">
+                  No other parents available to add
+                </Typography>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setParentAccessDialog(false)}>Cancel</Button>
+            <Button
+              onClick={handleAddParentAccess}
+              disabled={!selectedParent}
+              variant="contained"
+            >
+              Add Parent
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Fab
+          color="primary"
+          aria-label="refresh"
+          onClick={handleRefresh}
+          sx={{
+            position: "fixed",
+            bottom: 16,
+            right: 16,
+            zIndex: 1000,
+            boxShadow: 3,
+          }}
+        >
+          <RefreshIcon />
+        </Fab>
       </Container>
-      <Fab
-        color="primary"
-        aria-label="refresh"
-        onClick={handleRefresh}
-        sx={{
-          position: "fixed",
-          bottom: 16,
-          right: 16,
-          zIndex: 1000,
-          boxShadow: 3,
-        }}
-      >
-        <RefreshIcon />
-      </Fab>
     </Box>
   );
 };

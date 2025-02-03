@@ -51,7 +51,11 @@ service cloud.firestore {
     match /chores/{choreId} {
       allow read: if isAuthenticated();
       allow write, delete: if isAuthenticated() && (
-        isParent() || 
+        (isParent() && (
+          // Allow if parent has access or is creating a new chore
+          !exists(/databases/$(database)/documents/chores/$(choreId)) ||
+          request.auth.uid in resource.data.parentAccess
+        )) || 
         request.auth.uid == resource.data.assignedTo
       );
     }

@@ -15,7 +15,9 @@ import {
   runTransaction,
   increment,
   writeBatch,
-  limit
+  limit,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { createSchedule, getScheduleForChore, updateScheduleNextDue } from './schedules';
 import { recordEarning } from './allowances';
@@ -41,6 +43,7 @@ export const createChore = async (choreData, schedulePattern = null) => {
       timeframe: choreData.timeframe,
       assignedTo: choreData.assignedTo,
       createdBy: choreData.createdBy,
+      parentAccess: [choreData.createdBy], // Array of parents who can manage this chore
       status: 'pending',
       scheduledDays: choreData.scheduledDays || {},
       startDate: choreData.startDate || null,
@@ -77,22 +80,52 @@ export const createChore = async (choreData, schedulePattern = null) => {
  */
 export const getChores = async (parentId) => {
   try {
-    const q = query(
+    // Query for both old and new chore structures
+    const q1 = query(
       collection(db, 'chores'),
       where('createdBy', '==', parentId),
       orderBy('createdAt', 'desc')
     );
 
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      uid: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
-      completedAt: doc.data().completedAt?.toDate(),
-      verifiedAt: doc.data().verifiedAt?.toDate()
-    }));
+    const q2 = query(
+      collection(db, 'chores'),
+      where('parentAccess', 'array-contains', parentId),
+      orderBy('createdAt', 'desc')
+    );
+
+    const [snapshot1, snapshot2] = await Promise.all([
+      getDocs(q1),
+      getDocs(q2)
+    ]);
+
+    // Combine and deduplicate results
+    const choresMap = new Map();
+
+    const processSnapshot = (snapshot) => {
+      snapshot.docs.forEach(doc => {
+        if (!choresMap.has(doc.id)) {
+          const data = doc.data();
+          // Ensure parentAccess exists
+          if (!data.parentAccess) {
+            data.parentAccess = [data.createdBy];
+          }
+          choresMap.set(doc.id, {
+            id: doc.id,
+            uid: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate(),
+            updatedAt: data.updatedAt?.toDate(),
+            completedAt: data.completedAt?.toDate(),
+            verifiedAt: data.verifiedAt?.toDate()
+          });
+        }
+      });
+    };
+
+    processSnapshot(snapshot1);
+    processSnapshot(snapshot2);
+
+    return Array.from(choresMap.values());
   } catch (error) {
     console.error('Error getting chores:', error);
     throw error;
@@ -355,6 +388,44 @@ export const getChildChores = async (childId, status = null) => {
     return chores;
   } catch (error) {
     console.error('Error getting child chores:', error);
+    throw error;
+  }
+};
+
+/**
+ * Add a parent's access to manage a chore
+ * @param {string} choreId - The chore ID
+ * @param {string} parentId - The parent's user ID to add
+ * @returns {Promise<void>}
+ */
+export const addParentAccess = async (choreId, parentId) => {
+  try {
+    const choreRef = doc(db, 'chores', choreId);
+    await updateDoc(choreRef, {
+      parentAccess: arrayUnion(parentId),
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error adding parent access:', error);
+    throw error;
+  }
+};
+
+/**
+ * Remove a parent's access to manage a chore
+ * @param {string} choreId - The chore ID
+ * @param {string} parentId - The parent's user ID to remove
+ * @returns {Promise<void>}
+ */
+export const removeParentAccess = async (choreId, parentId) => {
+  try {
+    const choreRef = doc(db, 'chores', choreId);
+    await updateDoc(choreRef, {
+      parentAccess: arrayRemove(parentId),
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error removing parent access:', error);
     throw error;
   }
 };

@@ -20,11 +20,8 @@ import { registerUser } from "./auth";
 // Get family members for a parent
 export const getFamilyMembers = async (parentUid) => {
   try {
-    
-
     if (!parentUid) {
       console.error("No parent ID provided");
-      console.log("Parent ID:", parentUid);
       throw new Error("No parent ID provided");
     }
 
@@ -41,25 +38,50 @@ export const getFamilyMembers = async (parentUid) => {
       throw new Error("User is not a parent");
     }
 
-    // Query users collection for children of this parent
     const usersRef = collection(db, "users");
-    const q = query(
+    
+    // Get all users with role=parent
+    const parentsQuery = query(
+      usersRef,
+      where("role", "==", "parent")
+    );
+
+    const parentsSnapshot = await getDocs(parentsQuery);
+    const allParents = parentsSnapshot.docs.map(doc => ({
+      uid: doc.id,
+      ...doc.data()
+    }));
+
+    // Get all children of this parent
+    const childrenQuery = query(
       usersRef,
       where("parentUid", "==", parentUid),
       where("role", "==", "child")
     );
 
-    const querySnapshot = await getDocs(q);
-
-    const members = querySnapshot.docs.map((doc) => ({
+    const childrenSnapshot = await getDocs(childrenQuery);
+    const children = childrenSnapshot.docs.map(doc => ({
       uid: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
+      ...doc.data()
     }));
 
-    
-    return members;
+    // Filter out the current parent from the parents list
+    const otherParents = allParents.filter(parent => parent.uid !== parentUid);
+
+    // Combine all family members
+    const allMembers = [
+      // Current parent
+      {
+        uid: parentUid,
+        ...parentData
+      },
+      // Other parents
+      ...otherParents,
+      // Children
+      ...children
+    ];
+
+    return allMembers;
   } catch (error) {
     console.error("Error getting family members:", error);
     throw error;
