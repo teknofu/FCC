@@ -21,6 +21,7 @@ import {
 } from 'firebase/firestore';
 import { createSchedule, getScheduleForChore, updateScheduleNextDue } from './schedules';
 import { recordEarning } from './allowances';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Create a new chore
@@ -29,44 +30,28 @@ import { recordEarning } from './allowances';
  * @returns {Promise<Object>} The created chore with ID
  */
 export const createChore = async (choreData, schedulePattern = null) => {
-  const batch = writeBatch(db);
-
   try {
-    // Create chore document
-    const choreRef = doc(collection(db, 'chores'));
-    const timestamp = serverTimestamp();
-    
-    const chore = {
-      title: choreData.title,
-      description: choreData.description,
-      reward: parseFloat(choreData.reward) || 0,
-      timeframe: choreData.timeframe,
-      assignedTo: choreData.assignedTo,
-      createdBy: choreData.createdBy,
-      parentAccess: [choreData.createdBy], // Array of parents who can manage this chore
-      status: 'pending',
-      scheduledDays: choreData.scheduledDays || {},
-      startDate: choreData.startDate || null,
-      room: choreData.room || '',
-      createdAt: timestamp,
-      updatedAt: timestamp
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error('User must be authenticated to create chores');
+
+    // Add creator and timestamps
+    const choreWithMeta = {
+      ...choreData,
+      createdBy: user.uid,
+      parentAccess: [user.uid], // Initialize with creator's access
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     };
 
-    batch.set(choreRef, chore);
-
-    // If recurring, create schedule
+    // Add schedule if provided
     if (schedulePattern) {
-      const schedule = await createSchedule(choreRef.id, schedulePattern);
-      chore.scheduleId = schedule.id;
-      batch.update(choreRef, { scheduleId: schedule.id });
+      choreWithMeta.schedule = schedulePattern;
+      choreWithMeta.isRecurring = true;
     }
 
-    await batch.commit();
-
-    return {
-      id: choreRef.id,
-      ...chore
-    };
+    const docRef = await addDoc(collection(db, 'chores'), choreWithMeta);
+    return { id: docRef.id, ...choreWithMeta };
   } catch (error) {
     console.error('Error creating chore:', error);
     throw error;
