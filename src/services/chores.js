@@ -182,7 +182,9 @@ export const updateChore = async (choreId, choreData) => {
       completedAt: choreData.completedAt || null,
       verifiedAt: choreData.verifiedAt || null,
       verifiedBy: choreData.verifiedBy || null,
-      room: choreData.room || '', // Add room field
+      completionComment: choreData.completionComment || null,
+      verificationComment: choreData.verificationComment || null,
+      room: choreData.room || '',
       updatedAt: serverTimestamp(),
       ...(choreData.resetRewards && { rewardsResetDate: serverTimestamp() })
     };
@@ -219,9 +221,10 @@ export const deleteChore = async (choreId) => {
  * Mark a chore as complete
  * @param {string} choreId - The chore ID
  * @param {string} userId - The user marking the chore complete
+ * @param {string} [comment] - Optional completion comment
  * @returns {Promise<Object>} The updated chore
  */
-export const markChoreComplete = async (choreId, userId) => {
+export const markChoreComplete = async (choreId, userId, comment = "") => {
   try {
     const choreRef = doc(db, 'chores', choreId);
     const choreSnapshot = await getDoc(choreRef);
@@ -233,13 +236,22 @@ export const markChoreComplete = async (choreId, userId) => {
     const choreData = choreSnapshot.data();
     
     // Update chore status
-    await updateDoc(choreRef, {
+    const updateData = {
       status: 'completed',
       completedBy: userId,
-      completedAt: serverTimestamp()
-    });
+      completedAt: serverTimestamp(),
+      completionComment: comment || null
+    };
     
-    return { id: choreId, ...choreData, status: 'completed' };
+    await updateDoc(choreRef, updateData);
+    
+    return { 
+      id: choreId, 
+      ...choreData, 
+      ...updateData,
+      status: 'completed',
+      completionComment: comment || null
+    };
   } catch (error) {
     console.error('Error marking chore complete:', error);
     throw error;
@@ -250,11 +262,11 @@ export const markChoreComplete = async (choreId, userId) => {
  * Verify a completed chore
  * @param {string} choreId - The chore ID
  * @param {boolean} isApproved - Whether the chore is approved
+ * @param {string} verifiedBy - The user ID of the person verifying
+ * @param {string} [comment] - Optional verification comment
  * @returns {Promise<void>}
  */
-export const verifyChore = async (choreId, isApproved) => {
-  const batch = writeBatch(db);
-
+export const verifyChore = async (choreId, isApproved, verifiedBy, comment = "") => {
   try {
     const choreRef = doc(db, 'chores', choreId);
     const choreDoc = await getDoc(choreRef);
@@ -263,34 +275,37 @@ export const verifyChore = async (choreId, isApproved) => {
       throw new Error('Chore not found');
     }
 
-    const chore = choreDoc.data();
-    const timestamp = serverTimestamp();
+    const choreData = choreDoc.data();
 
     if (isApproved) {
-      // Record earning
-      await recordEarning({
-        childId: chore.assignedTo,
-        amount: parseFloat(chore.reward) || 0,
-        source: {
-          type: 'chore',
-          referenceId: choreId
-        }
+      // If approved, update status and add verification details
+      await updateDoc(choreRef, {
+        status: 'verified',
+        verifiedBy,
+        verifiedAt: serverTimestamp(),
+        verificationComment: comment || null
       });
 
-      // Update schedule if recurring
-      if (chore.scheduleId) {
-        await updateScheduleNextDue(chore.scheduleId);
+      // Record the reward if approved
+      if (choreData.reward && choreData.reward > 0) {
+        await recordEarning(choreData.assignedTo, choreData.reward, {
+          type: 'chore',
+          choreId,
+          choreName: choreData.title
+        });
       }
+    } else {
+      // If rejected, reset the chore to pending
+      await updateDoc(choreRef, {
+        status: 'pending',
+        completedAt: null,
+        completedBy: null,
+        completionComment: null,
+        verifiedBy,
+        verifiedAt: serverTimestamp(),
+        verificationComment: comment || null
+      });
     }
-
-    // Update chore status
-    batch.update(choreRef, {
-      status: isApproved ? 'verified' : 'rejected',
-      verifiedAt: timestamp,
-      updatedAt: timestamp
-    });
-
-    await batch.commit();
   } catch (error) {
     console.error('Error verifying chore:', error);
     throw error;

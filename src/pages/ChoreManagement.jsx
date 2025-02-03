@@ -68,6 +68,10 @@ const ChoreManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetRewardsToggle, setResetRewardsToggle] = useState(false);
+  const [verifyComment, setVerifyComment] = useState("");
+  const [completionComment, setCompletionComment] = useState('');
+  const [completingChoreId, setCompletingChoreId] = useState(null);
+  const [verifyingChore, setVerifyingChore] = useState(null);
 
   // Form state for new/edit chore
   const [choreForm, setChoreForm] = useState({
@@ -124,6 +128,7 @@ const ChoreManagement = () => {
             completedAt: null,
             verifiedAt: null,
             verifiedBy: null,
+            completionComment: null,
             updatedAt: new Date(),
           });
           console.log(`Reset recurring chore: ${choreToReset.title}`);
@@ -413,28 +418,28 @@ const ChoreManagement = () => {
   };
 
   const handleMarkComplete = async (choreId) => {
+    setCompletingChoreId(choreId);
+  };
+
+  const handleSubmitCompletion = async () => {
+    if (!completingChoreId) return;
+    
     try {
+      setLoading(true);
       const userId = user?.uid || user?.user?.uid;
       if (!userId) {
         throw new Error("User not authenticated");
       }
 
-      const updatedChore = await markChoreComplete(choreId, userId);
-
-      // Increment the date if the chore is monthly
-      if (updatedChore.timeframe === "monthly" && updatedChore.startDate) {
-        updatedChore.startDate = incrementMonthlyDate(updatedChore.startDate);
-      }
-
-      // Update the local chores list
-      setChores((prevChores) =>
-        prevChores.map((chore) =>
-          chore.id === choreId ? { ...chore, ...updatedChore } : chore
-        )
-      );
+      await markChoreComplete(completingChoreId, userId, completionComment);
+      await loadChores();
+      setCompletionComment('');
+      setCompletingChoreId(null);
     } catch (error) {
       console.error("Error marking chore complete:", error);
       setError(error.message || "Failed to mark chore complete");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -442,8 +447,10 @@ const ChoreManagement = () => {
     try {
       setLoading(true);
       setError("");
-      await verifyChore(choreId, isApproved, user.uid);
+      await verifyChore(choreId, isApproved, user.uid, verifyComment);
       loadChores();
+      setVerifyingChore(null);
+      setVerifyComment("");
     } catch (error) {
       console.error("Error verifying chore:", error);
       setError(error.message || "Failed to verify chore");
@@ -480,6 +487,7 @@ const ChoreManagement = () => {
         completedAt: null,
         verifiedAt: null,
         verifiedBy: null,
+        completionComment: null,
         updatedAt: new Date(),
         resetRewards: resetRewardsToggle,
       });
@@ -514,50 +522,31 @@ const ChoreManagement = () => {
     return null;
   };
 
-  const renderChildSelect = () => (
-    <FormControl fullWidth sx={{ mb: 2 }}>
-      <InputLabel>Assign To</InputLabel>
-      <Select
-        value={choreForm.assignedTo}
-        onChange={(e) =>
-          setChoreForm({ ...choreForm, assignedTo: e.target.value })
-        }
-        label="Assign To"
-        disabled={loading}
-      >
-        {familyMembers
-          .filter((member) => member.role === "child" && member.uid)
-          .map((child) => (
-            <MenuItem key={`child-select-${child.uid}`} value={child.uid}>
-              {child.displayName || child.email || "Unnamed Child"}
-            </MenuItem>
-          ))}
-      </Select>
-    </FormControl>
-  );
-
-  const renderChildStats = (childId) => {
-    const stats = childStats[childId] || {};
-    return (
-      <Box sx={{ mt: 1 }}>
-        <Typography variant="body2" color="text.secondary">
-          Completed: {stats.completedCount || 0} | Pending: {stats.pendingCount || 0}
-        </Typography>
-      </Box>
-    );
-  };
-
-  const showAddButton = role === "parent";
-
-  const handleRefresh = () => {
-    loadChores();
-  };
-
   const handleOpenParentAccessDialog = (chore) => {
     setSelectedChore(chore);
     // Refresh available parents list
     loadAvailableParents();
     setParentAccessDialog(true);
+  };
+
+  const renderChoreComment = (chore) => {
+    if (chore.completionComment) {
+      return (
+        <Box mt={2}>
+          <Typography variant="subtitle2" color="textSecondary">
+            Child's Comment:
+          </Typography>
+          <Typography variant="body2" style={{ fontStyle: 'italic' }}>
+            "{chore.completionComment}"
+          </Typography>
+        </Box>
+      );
+    }
+    return null;
+  };
+
+  const handleRefresh = () => {
+    loadChores();
   };
 
   return (
@@ -574,7 +563,7 @@ const ChoreManagement = () => {
               <Typography variant="h4">
                 {role === "parent" ? "Manage Chores" : "My Chores"}
               </Typography>
-              {showAddButton && (
+              {role === "parent" && (
                 <Button
                   variant="contained"
                   color="primary"
@@ -708,17 +697,48 @@ const ChoreManagement = () => {
                 >
                   <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} sm={6}>
-                      <Typography variant="h6">{chore.title}</Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        {chore.description}
-                      </Typography>
-                      {role === "parent" && (
-                        <Typography variant="body2">
-                          Assigned to:{" "}
-                          {familyMembers.find((m) => m.uid === chore.assignedTo)
-                            ?.displayName || "Unknown"}
-                        </Typography>
-                      )}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="h6">{chore.title}</Typography>
+                          <Typography variant="body2" color="textSecondary">
+                            {chore.description}
+                          </Typography>
+                          {role === "parent" && (
+                            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                              Assigned to:{" "}
+                              {familyMembers.find((m) => m.uid === chore.assignedTo)
+                                ?.displayName || "Unknown"}
+                            </Typography>
+                          )}
+                          {renderChoreComment(chore)}
+                          {chore.verificationComment && chore.status === "verified" && (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Parent's Feedback:
+                              </Typography>
+                              <Typography variant="body2" sx={{ pl: 2, fontStyle: 'italic', color: 'success.main' }}>
+                                "{chore.verificationComment}"
+                              </Typography>
+                            </Box>
+                          )}
+                          {chore.verificationComment && chore.status === "pending" && chore.verifiedAt && (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Rejection Reason:
+                              </Typography>
+                              <Typography variant="body2" sx={{ pl: 2, fontStyle: 'italic', color: 'error.main' }}>
+                                "{chore.verificationComment}"
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
                     </Grid>
                     <Grid item xs={12} sm={3}>
                       <Typography variant="body2">
@@ -817,25 +837,15 @@ const ChoreManagement = () => {
                             Mark Complete
                           </Button>
                         )}
-                        {chore.status === "completed" && role === "parent" && (
-                          <>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="success"
-                              onClick={() => handleVerify(chore.id, true)}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleVerify(chore.id, false)}
-                            >
-                              Reject
-                            </Button>
-                          </>
+                        {chore.status === "completed" && !chore.verified && role === "parent" && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="primary"
+                            onClick={() => setVerifyingChore(chore)}
+                          >
+                            Verify
+                          </Button>
                         )}
                         {role === "parent" && (
                           <Button
@@ -1022,102 +1032,21 @@ const ChoreManagement = () => {
             </DialogActions>
           </Dialog>
         )}
-
-        {/* Parent Access Dialog */}
-        <Dialog
-          open={parentAccessDialog}
-          onClose={() => setParentAccessDialog(false)}
-        >
-          <DialogTitle>Manage Parent Access</DialogTitle>
-          <DialogContent>
-            <Box sx={{ minWidth: 300, mt: 2 }}>
-              {availableParents.length > 0 && (
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Select Parent</InputLabel>
-                  <Select
-                    value={selectedParent}
-                    onChange={(e) => setSelectedParent(e.target.value)}
-                  >
-                    {availableParents
-                      .filter((parent) => !selectedChore?.parentAccess?.includes(parent.uid))
-                      .map((parent) => (
-                        <MenuItem key={parent.uid} value={parent.uid}>
-                          {parent.displayName || parent.email || "Unknown Parent"}
-                        </MenuItem>
-                      ))}
-                  </Select>
-                </FormControl>
-              )}
-
-              {selectedChore?.parentAccess?.length > 0 && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle1">Current Access:</Typography>
-                  {selectedChore.parentAccess.map((parentId) => {
-                    // Find parent in availableParents or check if it's the current user
-                    const parent = parentId === user.uid ? user : availableParents.find((p) => p.uid === parentId);
-                    return (
-                      <Box
-                        key={parentId}
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          my: 1,
-                        }}
-                      >
-                        <Typography>
-                          {parent ? (parent.displayName || parent.email) : "Unknown Parent"}
-                          {parentId === user.uid && " (You)"}
-                        </Typography>
-                        {parentId !== user.uid && (
-                          <Button
-                            size="small"
-                            color="error"
-                            onClick={() => handleRemoveParentAccess(selectedChore.id, parentId)}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </Box>
-                    );
-                  })}
-                </Box>
-              )}
-
-              {availableParents.length === 0 && (
-                <Typography color="text.secondary">
-                  No other parents available to add
-                </Typography>
-              )}
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setParentAccessDialog(false)}>Cancel</Button>
-            <Button
-              onClick={handleAddParentAccess}
-              disabled={!selectedParent}
-              variant="contained"
-            >
-              Add Parent
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Fab
-          color="primary"
-          aria-label="refresh"
-          onClick={handleRefresh}
-          sx={{
-            position: "fixed",
-            bottom: 16,
-            right: 16,
-            zIndex: 1000,
-            boxShadow: 3,
-          }}
-        >
-          <RefreshIcon />
-        </Fab>
       </Container>
+      <Fab
+        color="primary"
+        aria-label="refresh"
+        onClick={handleRefresh}
+        sx={{
+          position: "fixed",
+          bottom: 16,
+          right: 16,
+          zIndex: 1000,
+          boxShadow: 3,
+        }}
+      >
+        <RefreshIcon />
+      </Fab>
     </Box>
   );
 };
