@@ -52,9 +52,11 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write, delete: if isAuthenticated() && (
         (isParent() && (
-          // Allow if parent has access or is creating a new chore
+          // Allow if parent is creating a new chore
           !exists(/databases/$(database)/documents/chores/$(choreId)) ||
-          request.auth.uid in resource.data.parentAccess
+          // Allow if parent has access or is the creator
+          request.auth.uid in resource.data.parentAccess ||
+          request.auth.uid == resource.data.createdBy
         )) || 
         request.auth.uid == resource.data.assignedTo
       );
