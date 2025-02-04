@@ -47,6 +47,16 @@
 
 ## 2025-02-04
 
+### Added
+- Chore duplication feature
+  - New "Duplicate" button in chore edit dialog
+  - Creates exact copy of existing chore with:
+    - Same title, description, and schedule
+    - Same reward and room assignment
+    - Cleared assignment field for reassignment
+    - Reset status to pending
+  - Helps quickly create similar chores for different children
+
 ### Fixed
 - Bug fix: Added initial 'pending' status when creating new chores to ensure proper status tracking
 - Fixed "Mark Complete" button functionality in Chore Management by simplifying the completion flow. The button now directly marks chores as complete instead of using an intermediate state, improving reliability and user experience.
