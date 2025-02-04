@@ -902,7 +902,7 @@ const ChoreManagement = () => {
                                   .includes(new Date().toLocaleString("en-US", { weekday: "long" }))
                               ? "Today"
                               : getNextScheduledDay(chore.scheduledDays)
-                                ? `Next ${getNextScheduledDay(chore.scheduledDays)}`
+                                ? `${getNextScheduledDay(chore.scheduledDays)}`
                                 : "No days scheduled"}
                         </Typography>
                       )}
