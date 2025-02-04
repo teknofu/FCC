@@ -806,114 +806,105 @@ const ChoreManagement = () => {
           {/* Chores List */}
           <Grid item xs={12}>
             <Paper sx={{ p: 2 }}>
-              {chores.map((chore) => (
-                <Box
-                  key={chore.id}
-                  sx={{
-                    p: 2,
-                    mb: 2,
-                    border: "1px solid #e0e0e0",
-                    borderRadius: 1,
-                    backgroundColor:
-                      chore.status === "completed" ? "#f5f5f5" : "inherit",
-                  }}
-                >
-                  <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={6}>
+              <Grid container spacing={2}>
+                {chores.map((chore) => (
+                  <Grid item xs={12} sm={6} md={4} lg={3} key={chore.id}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        height: '100%',
+                        border: "1px solid #e0e0e0",
+                        borderRadius: 1,
+                        backgroundColor:
+                          chore.status === "completed" ? "#f5f5f5" : "inherit",
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="h6" noWrap sx={{ mb: 1 }}>{chore.title}</Typography>
+                        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                          {chore.description}
+                        </Typography>
+                        {role === "parent" && (
+                          <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                            Assigned to:{" "}
+                            {familyMembers.find((m) => m.uid === chore.assignedTo)
+                              ?.displayName || "Unknown"}
+                          </Typography>
+                        )}
+                        {renderChoreComment(chore)}
+                        {chore.verificationComment && chore.status === "verified" && (
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Parent's Feedback:
+                            </Typography>
+                            <Typography variant="body2" sx={{ pl: 2, fontStyle: 'italic', color: 'success.main' }}>
+                              "{chore.verificationComment}"
+                            </Typography>
+                          </Box>
+                        )}
+                        {chore.verificationComment && chore.status === "pending" && chore.verifiedAt && (
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Rejection Reason:
+                            </Typography>
+                            <Typography variant="body2" sx={{ pl: 2, fontStyle: 'italic', color: 'error.main' }}>
+                              "{chore.verificationComment}"
+                            </Typography>
+                          </Box>
+                        )}
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                          Reward: ${chore.reward?.toFixed(2)}
+                        </Typography>
+                        <Typography variant="body2">
+                          Status: {chore.status}
+                        </Typography>
+                        {chore.timeframe === "daily" && (
+                          <Typography variant="body2">
+                            Schedule: Daily
+                          </Typography>
+                        )}
+                        {chore.timeframe === "weekly" && chore.scheduledDays && (
+                          <Typography variant="body2">
+                            Schedule: Weekly on{" "}
+                            {Object.entries(chore.scheduledDays)
+                              .filter(([, checked]) => checked)
+                              .map(([day]) => day)
+                              .join(", ") || "no days selected"}
+                          </Typography>
+                        )}
+                        {chore.timeframe === "monthly" && (
+                          <Typography variant="body2">
+                            Schedule: Monthly starting {chore.startDate}
+                          </Typography>
+                        )}
+                        {/* Show next due date based on timeframe */}
+                        {chore.status === "pending" && (
+                          <Typography variant="body2" color="error">
+                            Due: {chore.timeframe === "monthly"
+                              ? chore.startDate
+                              : chore.timeframe === "daily"
+                                ? "Today"
+                                : Object.entries(chore.scheduledDays || {})
+                                    .filter(([, checked]) => checked)
+                                    .map(([day]) => day)
+                                    .includes(new Date().toLocaleString("en-US", { weekday: "long" }))
+                                ? "Today"
+                                : getNextScheduledDay(chore.scheduledDays)
+                                  ? `${getNextScheduledDay(chore.scheduledDays)}`
+                                  : "No days scheduled"}
+                          </Typography>
+                        )}
+                      </Box>
+                      
                       <Box
                         sx={{
                           display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                        }}
-                      >
-                        <Box>
-                          <Typography variant="h6">{chore.title}</Typography>
-                          <Typography variant="body2" color="textSecondary">
-                            {chore.description}
-                          </Typography>
-                          {role === "parent" && (
-                            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                              Assigned to:{" "}
-                              {familyMembers.find((m) => m.uid === chore.assignedTo)
-                                ?.displayName || "Unknown"}
-                            </Typography>
-                          )}
-                          {renderChoreComment(chore)}
-                          {chore.verificationComment && chore.status === "verified" && (
-                            <Box sx={{ mt: 1 }}>
-                              <Typography variant="subtitle2" color="textSecondary">
-                                Parent's Feedback:
-                              </Typography>
-                              <Typography variant="body2" sx={{ pl: 2, fontStyle: 'italic', color: 'success.main' }}>
-                                "{chore.verificationComment}"
-                              </Typography>
-                            </Box>
-                          )}
-                          {chore.verificationComment && chore.status === "pending" && chore.verifiedAt && (
-                            <Box sx={{ mt: 1 }}>
-                              <Typography variant="subtitle2" color="textSecondary">
-                                Rejection Reason:
-                              </Typography>
-                              <Typography variant="body2" sx={{ pl: 2, fontStyle: 'italic', color: 'error.main' }}>
-                                "{chore.verificationComment}"
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={3}>
-                      <Typography variant="body2">
-                        Reward: ${chore.reward?.toFixed(2)}
-                      </Typography>
-                      <Typography variant="body2">
-                        Status: {chore.status}
-                      </Typography>
-                      {chore.timeframe === "daily" && (
-                        <Typography variant="body2">
-                          Schedule: Daily
-                        </Typography>
-                      )}
-                      {chore.timeframe === "weekly" && chore.scheduledDays && (
-                        <Typography variant="body2">
-                          Schedule: Weekly on{" "}
-                          {Object.entries(chore.scheduledDays)
-                            .filter(([, checked]) => checked)
-                            .map(([day]) => day)
-                            .join(", ") || "no days selected"}
-                        </Typography>
-                      )}
-                      {chore.timeframe === "monthly" && (
-                        <Typography variant="body2">
-                          Schedule: Monthly starting {chore.startDate}
-                        </Typography>
-                      )}
-                      {/* Show next due date based on timeframe */}
-                      {chore.status === "pending" && (
-                        <Typography variant="body2" color="error">
-                          Due: {chore.timeframe === "monthly"
-                            ? chore.startDate
-                            : chore.timeframe === "daily"
-                              ? "Today"
-                              : Object.entries(chore.scheduledDays || {})
-                                  .filter(([, checked]) => checked)
-                                  .map(([day]) => day)
-                                  .includes(new Date().toLocaleString("en-US", { weekday: "long" }))
-                              ? "Today"
-                              : getNextScheduledDay(chore.scheduledDays)
-                                ? `${getNextScheduledDay(chore.scheduledDays)}`
-                                : "No days scheduled"}
-                        </Typography>
-                      )}
-                    </Grid>
-                    <Grid item xs={12} sm={3}>
-                      <Box
-                        display="flex"
-                        gap={1}
-                        flexWrap="wrap"
-                        justifyContent="flex-start"
-                        sx={{
+                          gap: 1,
+                          flexWrap: "wrap",
+                          justifyContent: "flex-start",
+                          mt: 2,
                           "& .MuiButton-root": {
                             minWidth: "auto",
                             mb: 1,
@@ -979,10 +970,10 @@ const ChoreManagement = () => {
                           </Button>
                         )}
                       </Box>
-                    </Grid>
+                    </Box>
                   </Grid>
-                </Box>
-              ))}
+                ))}
+              </Grid>
               {chores.length === 0 && (
                 <Box sx={{ textAlign: "center", py: 3 }}>
                   <Typography variant="body1" color="textSecondary">
