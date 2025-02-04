@@ -72,6 +72,9 @@
   - Rewards dynamically update when chores are added, removed, or completed
   - Fixed reward amounts in existing chore cards to reflect new calculation logic
   - Added real-time reward recalculation when child's pay per period changes
+  - Improved due date clarity in chore management
+  - Removed "Next" from weekly chore due dates to prevent confusion
+  - Example: "Due: Next Wednesday" is now "Due: Wednesday"
 
 ### Technical Changes
 - Refactored reward calculation logic in ChoreManagement component
