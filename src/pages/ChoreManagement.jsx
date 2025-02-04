@@ -570,6 +570,37 @@ const ChoreManagement = () => {
     </FormControl>
   );
 
+  const handleDuplicateChore = async () => {
+    try {
+      setLoading(true);
+      const duplicatedChoreData = {
+        ...selectedChore,
+        assignedTo: "", // Clear the assigned user
+        status: "pending",
+        completedAt: null,
+        verifiedAt: null,
+        verifiedBy: null,
+        completionComment: null,
+        verificationComment: null
+      };
+      
+      // Remove properties that shouldn't be duplicated
+      delete duplicatedChoreData.id;
+      delete duplicatedChoreData.uid;
+      delete duplicatedChoreData.createdAt;
+      delete duplicatedChoreData.updatedAt;
+
+      await createChore(duplicatedChoreData);
+      setOpenDialog(false);
+      loadChores();
+    } catch (error) {
+      console.error("Error duplicating chore:", error);
+      setError("Failed to duplicate chore");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box sx={{ position: "relative", minHeight: "100vh" }}>
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -1050,10 +1081,19 @@ const ChoreManagement = () => {
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseDialog}>Cancel</Button>
+              {selectedChore && (
+                <Button
+                  onClick={handleDuplicateChore}
+                  color="primary"
+                  disabled={loading}
+                >
+                  Duplicate
+                </Button>
+              )}
               <Button
                 onClick={handleSubmit}
-                variant="contained"
                 color="primary"
+                disabled={loading || !choreForm.title}
               >
                 {selectedChore ? "Update" : "Create"}
               </Button>
