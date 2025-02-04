@@ -97,3 +97,16 @@
   - Clear text-based presentation of active and completed chores
   - Dynamic messaging based on chore status
   - Improved reliability by removing problematic chart component
+
+## issue 58
+
+### Enhanced
+- Improved chore card layout
+  - Transformed single-column list into responsive grid layout
+  - Cards automatically adjust based on screen size:
+    - 4 cards per row on large screens
+    - 3 cards per row on medium screens
+    - 2 cards per row on small screens
+    - 1 card per row on mobile
+  - Better visual organization of chore information
+  - Consistent card heights and spacing
