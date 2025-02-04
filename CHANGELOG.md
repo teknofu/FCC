@@ -45,3 +45,8 @@
 - Fixed uncaught TypeError when selecting days in weekly chore schedule
   - Properly initialize scheduledDays when switching to weekly timeframe
   - Ensure scheduledDays object exists before accessing properties
+
+## 2025-02-04
+
+### Fixed
+- Bug fix: Added initial 'pending' status when creating new chores to ensure proper status tracking

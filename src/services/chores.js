@@ -41,7 +41,8 @@ export const createChore = async (choreData, schedulePattern = null) => {
       createdBy: user.uid,
       parentAccess: [user.uid], // Initialize with creator's access
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      status: 'pending'
     };
 
     // Add schedule if provided
