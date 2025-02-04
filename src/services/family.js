@@ -108,6 +108,7 @@ export const addChildAccount = async (parentUid, childData) => {
       parentUid: parentUid,
       dateOfBirth: childData.dateOfBirth,
       allowance: parseFloat(childData.allowance) || 0,
+      payPerPeriod: parseFloat(childData.payPerPeriod) || 0,
       balance: 0, // Initialize balance for rewards
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -128,12 +129,12 @@ export const addChildAccount = async (parentUid, childData) => {
 // Update a child account
 export const updateChildAccount = async (childId, updates) => {
   try {
-    
     const childRef = doc(db, "users", childId);
     const childDoc = await getDoc(childRef);
     const updateData = {
       ...updates,
       allowance: parseFloat(updates.allowance) || 0,
+      payPerPeriod: parseFloat(updates.payPerPeriod) || 0,
       dateOfBirth: updates.dateOfBirth,
       updatedAt: serverTimestamp(),
     };

@@ -38,6 +38,7 @@ export const createChore = async (choreData, schedulePattern = null) => {
     // Add creator and timestamps
     const choreWithMeta = {
       ...choreData,
+      reward: parseFloat(choreData.reward) || 0,
       createdBy: user.uid,
       parentAccess: [user.uid], // Initialize with creator's access
       createdAt: serverTimestamp(),
