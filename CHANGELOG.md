@@ -82,3 +82,18 @@
 - Updated family service to properly handle payPerPeriod field
 - Added new useEffect hook to trigger reward recalculation when family members update
 - Modified loadChores function to batch update rewards for all active chores
+
+## issue 51
+
+### 2025-02-04
+
+### Technical Changes
+- Replaced chores overview chart with text-based display in Dashboard
+- Removed unused chart-related dependencies
+- Improved chores overview loading state handling
+
+### Enhanced
+- Simplified chores overview display
+  - Clear text-based presentation of active and completed chores
+  - Dynamic messaging based on chore status
+  - Improved reliability by removing problematic chart component
