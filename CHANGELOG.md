@@ -50,3 +50,7 @@
 ### Fixed
 - Bug fix: Added initial 'pending' status when creating new chores to ensure proper status tracking
 - Fixed "Mark Complete" button functionality in Chore Management by simplifying the completion flow. The button now directly marks chores as complete instead of using an intermediate state, improving reliability and user experience.
+- Restored chore comment system functionality:
+  - Re-added comment dialog when children mark chores complete
+  - Re-added feedback dialog for parent verification
+  - Fixed display of completion comments and verification feedback in chore cards

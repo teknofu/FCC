@@ -861,7 +861,7 @@ const ChoreManagement = () => {
                             size="small"
                             variant="contained"
                             color="primary"
-                            onClick={() => handleMarkComplete(chore.id)}
+                            onClick={() => setCompletingChoreId(chore.id)}
                           >
                             Mark Complete
                           </Button>
@@ -1129,6 +1129,84 @@ const ChoreManagement = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setParentAccessDialog(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Completion Comment Dialog */}
+        <Dialog
+          open={!!completingChoreId}
+          onClose={() => setCompletingChoreId(null)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Complete Chore</DialogTitle>
+          <DialogContent>
+            <Box sx={{ mt: 2 }}>
+              <TextField
+                fullWidth
+                label="Add a comment about this chore example:(Checked, already cleaned)"
+                multiline
+                rows={3}
+                value={completionComment}
+                onChange={(e) => setCompletionComment(e.target.value)}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCompletingChoreId(null)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => {
+                handleMarkComplete(completingChoreId);
+                setCompletingChoreId(null);
+              }}
+            >
+              Submit
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Verification Dialog */}
+        <Dialog
+          open={!!verifyingChore}
+          onClose={() => setVerifyingChore(null)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Verify Chore Completion</DialogTitle>
+          <DialogContent>
+            <Box sx={{ mt: 2 }}>
+              <TextField
+                fullWidth
+                label="Add feedback or reason for approval/rejection"
+                multiline
+                rows={3}
+                value={verifyComment}
+                onChange={(e) => setVerifyComment(e.target.value)}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setVerifyingChore(null)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => {
+                handleVerify(verifyingChore.id, false);
+              }}
+            >
+              Reject
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => {
+                handleVerify(verifyingChore.id, true);
+              }}
+            >
+              Approve
+            </Button>
           </DialogActions>
         </Dialog>
       </Container>
