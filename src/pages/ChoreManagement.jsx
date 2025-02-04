@@ -418,12 +418,6 @@ const ChoreManagement = () => {
   };
 
   const handleMarkComplete = async (choreId) => {
-    setCompletingChoreId(choreId);
-  };
-
-  const handleSubmitCompletion = async () => {
-    if (!completingChoreId) return;
-    
     try {
       setLoading(true);
       const userId = user?.uid || user?.user?.uid;
@@ -431,10 +425,9 @@ const ChoreManagement = () => {
         throw new Error("User not authenticated");
       }
 
-      await markChoreComplete(completingChoreId, userId, completionComment);
+      await markChoreComplete(choreId, userId, completionComment);
       await loadChores();
       setCompletionComment('');
-      setCompletingChoreId(null);
     } catch (error) {
       console.error("Error marking chore complete:", error);
       setError(error.message || "Failed to mark chore complete");

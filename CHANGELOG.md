@@ -50,3 +50,4 @@
 
 ### Fixed
 - Bug fix: Added initial 'pending' status when creating new chores to ensure proper status tracking
+- Fixed "Mark Complete" button functionality in Chore Management by simplifying the completion flow. The button now directly marks chores as complete instead of using an intermediate state, improving reliability and user experience.
