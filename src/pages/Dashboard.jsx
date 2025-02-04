@@ -8,16 +8,6 @@ import {
   Box,
   CircularProgress
 } from '@mui/material';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  Cell
-} from 'recharts';
 import { getChores, getChildChores } from '../services/chores';
 import {
   getTotalEarnings,
@@ -67,10 +57,6 @@ const Dashboard = () => {
 
   const completedChores = chores.filter(chore => chore.completed);
   const activeChores = chores.filter(chore => chore.status === 'pending' && chore.assignedTo === user.uid);
-  const chartData = [
-    { name: 'Active', value: activeChores.length },
-    { name: 'Completed', value: completedChores.length }
-  ];
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -105,7 +91,7 @@ const Dashboard = () => {
           </Paper>
         </Grid>
 
-        {/* Updated Chores Overview with Dynamic Chart */}
+        {/* Updated Chores Overview with Text Display */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
@@ -116,26 +102,22 @@ const Dashboard = () => {
                 <CircularProgress />
               </Box>
             ) : (
-              <>
-                <Typography>
-                  {activeChores.length} active chores
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body1" paragraph>
+                  <strong>Active Chores:</strong> {activeChores.length}
                 </Typography>
-                <Box sx={{ width: '100%', height: 300, minHeight: '300px' }}>
-                  <ResponsiveContainer>
-                    <BarChart data={chartData}>
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="value" name="Number of Chores">
-                        {chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.name === 'Active' ? '#ff4d4d' : '#4caf50'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Box>
-              </>
+                <Typography variant="body1" paragraph>
+                  <strong>Completed Chores:</strong> {completedChores.length}
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  <strong>Total Chores:</strong> {chores.length}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {activeChores.length === 0 
+                    ? "No active chores at the moment." 
+                    : `You have ${activeChores.length} ${activeChores.length === 1 ? 'chore' : 'chores'} to complete.`}
+                </Typography>
+              </Box>
             )}
           </Paper>
         </Grid>
