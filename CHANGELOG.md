@@ -64,3 +64,18 @@
   - Re-added comment dialog when children mark chores complete
   - Re-added feedback dialog for parent verification
   - Fixed display of completion comments and verification feedback in chore cards
+
+### Enhanced
+- Improved chore reward calculation system
+  - Rewards now automatically calculated based on child's pay per period and active chores
+  - Added detailed reward calculation formula display in chore form
+  - Rewards dynamically update when chores are added, removed, or completed
+  - Fixed reward amounts in existing chore cards to reflect new calculation logic
+  - Added real-time reward recalculation when child's pay per period changes
+
+### Technical Changes
+- Refactored reward calculation logic in ChoreManagement component
+- Added helper functions for getting child's pay per period and active chore count
+- Updated family service to properly handle payPerPeriod field
+- Added new useEffect hook to trigger reward recalculation when family members update
+- Modified loadChores function to batch update rewards for all active chores
