@@ -38,6 +38,7 @@ const FamilyManagement = () => {
     email: "",
     dateOfBirth: "",
     allowance: "",
+    payPerPeriod: "",
   });
 
   useEffect(() => {
@@ -74,6 +75,7 @@ const FamilyManagement = () => {
         email: child.email || "",
         dateOfBirth: child.dateOfBirth || "",
         allowance: child.allowance || "",
+        payPerPeriod: child.payPerPeriod || "",
       });
       setSelectedChild(child);
     } else {
@@ -82,6 +84,7 @@ const FamilyManagement = () => {
         email: "",
         dateOfBirth: "",
         allowance: "",
+        payPerPeriod: "",
       });
       setSelectedChild(null);
     }
@@ -96,6 +99,7 @@ const FamilyManagement = () => {
       email: "",
       dateOfBirth: "",
       allowance: "",
+      payPerPeriod: "",
     });
   };
 
@@ -247,7 +251,33 @@ const FamilyManagement = () => {
                 shrink: true,
               }}
             />
-            
+            <TextField
+              fullWidth
+              label="Allowance"
+              type="number"
+              value={formData.allowance}
+              onChange={(e) =>
+                setFormData({ ...formData, allowance: e.target.value })
+              }
+              margin="normal"
+              InputProps={{
+                startAdornment: <span>$</span>,
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Pay Per Period"
+              type="number"
+              value={formData.payPerPeriod}
+              onChange={(e) =>
+                setFormData({ ...formData, payPerPeriod: e.target.value })
+              }
+              margin="normal"
+              InputProps={{
+                startAdornment: <span>$</span>,
+              }}
+              helperText="Maximum amount child can earn per period through chores"
+            />
           </Box>
         </DialogContent>
         <DialogActions>

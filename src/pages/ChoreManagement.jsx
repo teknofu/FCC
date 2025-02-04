@@ -77,13 +77,67 @@ const ChoreManagement = () => {
   const [choreForm, setChoreForm] = useState({
     title: "",
     description: "",
-    reward: 0,
+    reward: "",
     timeframe: "daily",
     assignedTo: "",
     startDate: "",
     room: "",
     scheduledDays: null
   });
+
+  const getSelectedChildPayPeriod = () => {
+    const child = familyMembers.find(m => m.uid === choreForm.assignedTo);
+    return child ? parseFloat(child.payPerPeriod) || 0 : 0;
+  };
+
+  const getActiveChoreCount = async (childId) => {
+    if (!childId) return 0;
+    const allChores = await getAssignedChores(childId);
+    return allChores.filter(chore => 
+      chore.status === 'pending' || chore.status === 'completed'
+    ).length;
+  };
+
+  // Calculate reward based on child's pay per period and number of chores
+  const calculateReward = async (childId) => {
+    if (!childId) return 0;
+    
+    const child = familyMembers.find(member => member.uid === childId);
+    if (!child) return 0;
+    
+    const payPerPeriod = parseFloat(child.payPerPeriod) || 0;
+    if (payPerPeriod === 0) return 0;
+
+    try {
+      // Get all active chores for this child
+      const activeChoreCount = await getActiveChoreCount(childId);
+      
+      // Add 1 to include the new chore being created/edited
+      // But don't add 1 if we're editing an existing chore
+      const isEditing = selectedChore !== null;
+      const totalChores = activeChoreCount + (isEditing ? 0 : 1);
+      
+      if (totalChores === 0) return 0;
+      
+      // Calculate reward as potential earnings divided by number of chores
+      const reward = payPerPeriod / totalChores;
+      
+      return Math.round(reward * 100) / 100; // Round to 2 decimal places
+    } catch (error) {
+      console.error('Error calculating reward:', error);
+      return 0;
+    }
+  };
+
+  const handleAssignedToChange = async (e) => {
+    const childId = e.target.value;
+    const reward = await calculateReward(childId);
+    setChoreForm({
+      ...choreForm,
+      assignedTo: childId,
+      reward: reward
+    });
+  };
 
   useEffect(() => {
     // Only load chores if user exists and has a role
@@ -99,60 +153,10 @@ const ChoreManagement = () => {
   }, [role, user, filters.status, filters.timeframe, filters.dueToday, filters.child, filters.room]);
 
   useEffect(() => {
-    const resetRecurringChores = async () => {
-      // Only run for parents who can manage chores
-      if (role !== "parent" || !chores.length) return;
-
-      // Get current day
-      const currentDay = new Date().toLocaleString("en-US", {
-        weekday: "long",
-      });
-
-      // Filter chores that need reset
-      const choresToReset = chores.filter(
-        (chore) =>
-          // Must be a daily recurring chore
-          chore.timeframe === "daily" &&
-          // Must have been verified yesterday or earlier
-          chore.status === "verified" &&
-          // Check if the last verification was not today
-          new Date(chore.verifiedAt?.toDate?.() || 0).toDateString() !==
-            new Date().toDateString()
-      );
-
-      // Reset each chore that meets the criteria
-      for (const choreToReset of choresToReset) {
-        try {
-          await updateChore(choreToReset.id, {
-            ...choreToReset,
-            status: "pending",
-            completedAt: null,
-            verifiedAt: null,
-            verifiedBy: null,
-            completionComment: null,
-            updatedAt: new Date(),
-          });
-          console.log(`Reset recurring chore: ${choreToReset.title}`);
-        } catch (error) {
-          console.error(`Failed to reset chore ${choreToReset.id}:`, error);
-        }
-      }
-
-      // Reload chores after reset
-      if (choresToReset.length > 0) {
-        loadChores();
-      }
-    };
-
-    // Run reset logic once per day
-    const lastResetDate = localStorage.getItem("lastChoreResetDate");
-    const today = new Date().toDateString();
-
-    if (lastResetDate !== today) {
-      resetRecurringChores();
-      localStorage.setItem("lastChoreResetDate", today);
+    if (familyMembers.length > 0) {
+      loadChores();
     }
-  }, [chores, role, user]);
+  }, [familyMembers]);
 
   // Load available parents
   const loadAvailableParents = async () => {
@@ -192,6 +196,46 @@ const ChoreManagement = () => {
         fetchedChores = await getAssignedChores(userId);
       } else {
         fetchedChores = await getChores(userId);
+      }
+
+      // Group chores by assigned child to calculate rewards
+      const choresByChild = {};
+      fetchedChores.forEach(chore => {
+        if (!choresByChild[chore.assignedTo]) {
+          choresByChild[chore.assignedTo] = [];
+        }
+        choresByChild[chore.assignedTo].push(chore);
+      });
+
+      // Recalculate rewards for each child's chores
+      for (const [childId, childChores] of Object.entries(choresByChild)) {
+        const child = familyMembers.find(m => m.uid === childId);
+        if (child && child.payPerPeriod) {
+          const activeChores = childChores.filter(chore => 
+            chore.status === 'pending' || chore.status === 'completed'
+          );
+          
+          if (activeChores.length > 0) {
+            const rewardPerChore = parseFloat(child.payPerPeriod) / activeChores.length;
+            const roundedReward = Math.round(rewardPerChore * 100) / 100;
+            
+            // Update rewards in database
+            await Promise.all(activeChores.map(chore => 
+              updateChore(chore.id, { 
+                ...chore, 
+                reward: roundedReward
+              })
+            ));
+
+            // Update rewards in local chores array
+            fetchedChores = fetchedChores.map(chore => 
+              (chore.assignedTo === childId && 
+               (chore.status === 'pending' || chore.status === 'completed')) 
+                ? { ...chore, reward: roundedReward }
+                : chore
+            );
+          }
+        }
       }
 
       // Apply filters
@@ -239,10 +283,10 @@ const ChoreManagement = () => {
       });
 
       setChores(filteredChores);
-      setLoading(false);
     } catch (error) {
       console.error("Error loading chores:", error);
       setError(error.message || "Failed to load chores");
+    } finally {
       setLoading(false);
     }
   };
@@ -352,8 +396,8 @@ const ChoreManagement = () => {
     });
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setError("");
 
     // Validate startDate for monthly chores
@@ -368,7 +412,7 @@ const ChoreManagement = () => {
 
       const choreData = {
         ...choreForm,
-        reward: parseFloat(choreForm.reward) || 0,
+        reward: await calculateReward(choreForm.assignedTo),
         createdBy: user.uid,
       };
 
@@ -381,6 +425,32 @@ const ChoreManagement = () => {
         await updateChore(selectedChore.id, choreData);
       } else {
         await createChore(choreData);
+      }
+
+      // After creating/updating a chore, recalculate rewards for all chores
+      if (choreForm.assignedTo) {
+        const allChores = await getAssignedChores(choreForm.assignedTo);
+        const child = familyMembers.find(member => member.uid === choreForm.assignedTo);
+        
+        if (child && child.payPerPeriod) {
+          // Only update rewards for active chores
+          const activeChores = allChores.filter(chore => 
+            chore.status === 'pending' || chore.status === 'completed'
+          );
+          
+          if (activeChores.length > 0) {
+            const rewardPerChore = parseFloat(child.payPerPeriod) / activeChores.length;
+            const roundedReward = Math.round(rewardPerChore * 100) / 100;
+            
+            // Update all active chores with new reward amount
+            await Promise.all(activeChores.map(chore => 
+              updateChore(chore.id, { 
+                ...chore, 
+                reward: roundedReward
+              })
+            ));
+          }
+        }
       }
 
       handleCloseDialog();
@@ -487,6 +557,7 @@ const ChoreManagement = () => {
         verifiedAt: null,
         verifiedBy: null,
         completionComment: null,
+        verificationComment: null,
         updatedAt: new Date(),
         resetRewards: resetRewardsToggle,
       });
@@ -554,7 +625,7 @@ const ChoreManagement = () => {
       <Select
         value={choreForm.assignedTo}
         onChange={(e) =>
-          setChoreForm({ ...choreForm, assignedTo: e.target.value })
+          handleAssignedToChange(e)
         }
         label="Assign To"
         disabled={loading}
@@ -967,19 +1038,25 @@ const ChoreManagement = () => {
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField
-                      fullWidth
-                      label="Reward"
+                      margin="dense"
+                      label="Reward Amount"
                       type="number"
+                      fullWidth
                       value={choreForm.reward}
-                      onChange={(e) =>
-                        setChoreForm({ ...choreForm, reward: e.target.value })
-                      }
+                      disabled
                       InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">$</InputAdornment>
-                        ),
+                        startAdornment: <span>$</span>,
                       }}
-                      required
+                      helperText={
+                        choreForm.assignedTo ? 
+                        `Automatically calculated: $${getSelectedChildPayPeriod()} (pay per period) ÷ ${
+                          chores.filter(c => 
+                            c.assignedTo === choreForm.assignedTo && 
+                            (c.status === 'pending' || c.status === 'completed')
+                          ).length + (selectedChore ? 0 : 1)
+                        } (total chores) = $${choreForm.reward}` :
+                        'Select a child to calculate reward'
+                      }
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
