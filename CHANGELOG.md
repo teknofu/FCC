@@ -53,6 +53,10 @@ All notable changes to this project will be documented in this file.
 - Due today filter now properly respects other active filters
   - Child and room filters are now properly applied before due today check
   - Improved filter logic organization for better maintainability
+- Fixed issue where chore rewards were being recalculated when chores were verified, causing remaining active chores to have increased rewards
+  - Modified reward calculation to consider all chores (including verified ones) when determining reward amounts
+  - Removed reward recalculation logic from loadChores() and handleSubmit()
+  - Rewards now stay fixed at their initial calculated value throughout the chore lifecycle
 
 ### Technical Changes
 - Refactored reward calculation logic in ChoreManagement component
