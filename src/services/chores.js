@@ -275,10 +275,14 @@ export const verifyChore = async (choreId, isApproved, verifiedBy, comment = "")
 
       // Record the reward if approved
       if (choreData.reward && choreData.reward > 0) {
-        await recordEarning(choreData.assignedTo, choreData.reward, {
-          type: 'chore',
-          choreId,
-          choreName: choreData.title
+        await recordEarning({
+          childId: choreData.assignedTo,
+          amount: choreData.reward,
+          source: {
+            type: 'chore',
+            choreId,
+            choreName: choreData.title
+          }
         });
       }
     } else {

@@ -119,3 +119,10 @@
   - Child and room filters are now properly applied before due today check
   - Improved filter logic organization for better maintainability
 
+## issue 62
+
+  ### Fixed
+- Fixed approve button in chore verification dialog
+  - Corrected recordEarning function call to pass proper object structure
+  - Fixed undefined childId error when recording chore earnings
+  - Earnings now properly show up in financial management history
