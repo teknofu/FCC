@@ -110,3 +110,12 @@
     - 1 card per row on mobile
   - Better visual organization of chore information
   - Consistent card heights and spacing
+
+  ##issue 59
+
+  ### Fixed
+- Due today filter now properly respects other active filters
+  - Fixed issue where daily chores would always show when "due today" was checked
+  - Child and room filters are now properly applied before due today check
+  - Improved filter logic organization for better maintainability
+
