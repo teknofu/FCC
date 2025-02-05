@@ -93,9 +93,8 @@ const ChoreManagement = () => {
   const getActiveChoreCount = async (childId) => {
     if (!childId) return 0;
     const allChores = await getAssignedChores(childId);
-    return allChores.filter(chore => 
-      chore.status === 'pending' || chore.status === 'completed'
-    ).length;
+    // Count ALL chores regardless of status to maintain consistent reward amounts
+    return allChores.length;
   };
 
   // Calculate reward based on child's pay per period and number of chores
@@ -109,13 +108,13 @@ const ChoreManagement = () => {
     if (payPerPeriod === 0) return 0;
 
     try {
-      // Get all active chores for this child
-      const activeChoreCount = await getActiveChoreCount(childId);
+      // Get ALL chores for this child, regardless of status
+      const choreCount = await getActiveChoreCount(childId);
       
       // Add 1 to include the new chore being created/edited
       // But don't add 1 if we're editing an existing chore
       const isEditing = selectedChore !== null;
-      const totalChores = activeChoreCount + (isEditing ? 0 : 1);
+      const totalChores = choreCount + (isEditing ? 0 : 1);
       
       if (totalChores === 0) return 0;
       
@@ -196,46 +195,6 @@ const ChoreManagement = () => {
         fetchedChores = await getAssignedChores(userId);
       } else {
         fetchedChores = await getChores(userId);
-      }
-
-      // Group chores by assigned child to calculate rewards
-      const choresByChild = {};
-      fetchedChores.forEach(chore => {
-        if (!choresByChild[chore.assignedTo]) {
-          choresByChild[chore.assignedTo] = [];
-        }
-        choresByChild[chore.assignedTo].push(chore);
-      });
-
-      // Recalculate rewards for each child's chores
-      for (const [childId, childChores] of Object.entries(choresByChild)) {
-        const child = familyMembers.find(m => m.uid === childId);
-        if (child && child.payPerPeriod) {
-          const activeChores = childChores.filter(chore => 
-            chore.status === 'pending' || chore.status === 'completed'
-          );
-          
-          if (activeChores.length > 0) {
-            const rewardPerChore = parseFloat(child.payPerPeriod) / activeChores.length;
-            const roundedReward = Math.round(rewardPerChore * 100) / 100;
-            
-            // Update rewards in database
-            await Promise.all(activeChores.map(chore => 
-              updateChore(chore.id, { 
-                ...chore, 
-                reward: roundedReward
-              })
-            ));
-
-            // Update rewards in local chores array
-            fetchedChores = fetchedChores.map(chore => 
-              (chore.assignedTo === childId && 
-               (chore.status === 'pending' || chore.status === 'completed')) 
-                ? { ...chore, reward: roundedReward }
-                : chore
-            );
-          }
-        }
       }
 
       // Apply filters
@@ -422,32 +381,6 @@ const ChoreManagement = () => {
         await updateChore(selectedChore.id, choreData);
       } else {
         await createChore(choreData);
-      }
-
-      // After creating/updating a chore, recalculate rewards for all chores
-      if (choreForm.assignedTo) {
-        const allChores = await getAssignedChores(choreForm.assignedTo);
-        const child = familyMembers.find(member => member.uid === choreForm.assignedTo);
-        
-        if (child && child.payPerPeriod) {
-          // Only update rewards for active chores
-          const activeChores = allChores.filter(chore => 
-            chore.status === 'pending' || chore.status === 'completed'
-          );
-          
-          if (activeChores.length > 0) {
-            const rewardPerChore = parseFloat(child.payPerPeriod) / activeChores.length;
-            const roundedReward = Math.round(rewardPerChore * 100) / 100;
-            
-            // Update all active chores with new reward amount
-            await Promise.all(activeChores.map(chore => 
-              updateChore(chore.id, { 
-                ...chore, 
-                reward: roundedReward
-              })
-            ));
-          }
-        }
       }
 
       handleCloseDialog();
