@@ -250,27 +250,6 @@ const ChoreManagement = () => {
         if (filters.timeframe !== "all" && chore.timeframe !== filters.timeframe)
           return false;
 
-        // Due today filter
-        if (filters.dueToday) {
-          const today = new Date().toLocaleString("en-US", { weekday: "long" });
-
-          // Daily chores are always due
-          if (chore.timeframe === "daily") return true;
-
-          // Weekly chores - check if today is in scheduledDays
-          if (chore.timeframe === "weekly") {
-            return chore.scheduledDays && chore.scheduledDays[today];
-          }
-
-          // Monthly chores - check if today matches startDate
-          if (chore.timeframe === "monthly") {
-            const currentDate = new Date().toISOString().split("T")[0];
-            return chore.startDate === currentDate;
-          }
-
-          return false;
-        }
-
         // Child filter
         if (filters.child !== "all" && chore.assignedTo !== filters.child)
           return false;
@@ -278,6 +257,24 @@ const ChoreManagement = () => {
         // Room filter
         if (filters.room !== "all" && chore.room !== filters.room)
           return false;
+
+        // Due today filter
+        if (filters.dueToday) {
+          const today = new Date().toLocaleString("en-US", { weekday: "long" });
+
+          // Check based on timeframe
+          if (chore.timeframe === "daily") {
+            return true; // Daily chores are always due
+          }
+          if (chore.timeframe === "weekly") {
+            return chore.scheduledDays && chore.scheduledDays[today];
+          }
+          if (chore.timeframe === "monthly") {
+            const currentDate = new Date().toISOString().split("T")[0];
+            return chore.startDate === currentDate;
+          }
+          return false;
+        }
 
         return true;
       });
