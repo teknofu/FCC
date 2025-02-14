@@ -11,6 +11,7 @@ import {
   getChildStats,
   addParentAccess,
   removeParentAccess,
+  rotateChoreAssignee
 } from "../services/chores";
 import { getFamilyMembers } from "../services/family";
 import {
@@ -82,7 +83,11 @@ const ChoreManagement = () => {
     assignedTo: "",
     startDate: "",
     room: "",
-    scheduledDays: null
+    scheduledDays: null,
+    assignees: [],
+    rotationEnabled: false,
+    rotationType: "completion",
+    rotationSchedule: null
   });
 
   const getSelectedChildPayPeriod = () => {
@@ -128,13 +133,28 @@ const ChoreManagement = () => {
     }
   };
 
-  const handleAssignedToChange = async (e) => {
-    const childId = e.target.value;
-    const reward = await calculateReward(childId);
+  const handleAssignedToChange = async (event) => {
+    const selectedAssignees = event.target.value;
+    const reward = await calculateReward(selectedAssignees[0]); // Use first assignee for initial reward calculation
     setChoreForm({
       ...choreForm,
-      assignedTo: childId,
+      assignedTo: selectedAssignees[0], // Set primary assignee
+      assignees: selectedAssignees, // Store all assignees
       reward: reward
+    });
+  };
+
+  const handleRotationTypeChange = (event) => {
+    setChoreForm({
+      ...choreForm,
+      rotationType: event.target.value
+    });
+  };
+
+  const handleRotationScheduleChange = (event) => {
+    setChoreForm({
+      ...choreForm,
+      rotationSchedule: event.target.value
     });
   };
 
@@ -148,6 +168,45 @@ const ChoreManagement = () => {
         loadFamilyMembers(user.uid);
         loadAvailableParents();
       }
+
+      // Set up rotation schedule checker
+      const rotationChecker = setInterval(async () => {
+        try {
+          // Check each chore for schedule-based rotation
+          const choresToRotate = chores.filter(chore => 
+            chore.rotationEnabled && 
+            chore.rotationType === 'schedule' &&
+            chore.rotationSchedule
+          );
+
+          for (const chore of choresToRotate) {
+            const lastRotation = chore.lastRotation?.toDate() || new Date(0);
+            const now = new Date();
+            let shouldRotate = false;
+
+            switch (chore.rotationSchedule) {
+              case 'daily':
+                shouldRotate = now.getDate() !== lastRotation.getDate();
+                break;
+              case 'weekly':
+                const weekDiff = Math.floor((now - lastRotation) / (7 * 24 * 60 * 60 * 1000));
+                shouldRotate = weekDiff >= 1;
+                break;
+              case 'monthly':
+                shouldRotate = now.getMonth() !== lastRotation.getMonth();
+                break;
+            }
+
+            if (shouldRotate) {
+              await rotateChoreAssignee(chore.id);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking rotation schedules:', error);
+        }
+      }, 60000); // Check every minute
+
+      return () => clearInterval(rotationChecker);
     }
   }, [role, user, filters.status, filters.timeframe, filters.dueToday, filters.child, filters.room]);
 
@@ -316,7 +375,11 @@ const ChoreManagement = () => {
         room: chore.room || "",
         scheduledDays: chore.timeframe === "weekly" ? 
           (chore.scheduledDays || DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: false }), {})) 
-          : null
+          : null,
+        assignees: chore.assignees || [],
+        rotationEnabled: chore.rotationEnabled || false,
+        rotationType: chore.rotationType || "completion",
+        rotationSchedule: chore.rotationSchedule || null
       };
 
       setChoreForm(formData);
@@ -330,7 +393,11 @@ const ChoreManagement = () => {
         assignedTo: "",
         startDate: "",
         room: "",
-        scheduledDays: null
+        scheduledDays: null,
+        assignees: [],
+        rotationEnabled: false,
+        rotationType: "completion",
+        rotationSchedule: null
       });
       setSelectedChore(null);
     }
@@ -348,7 +415,11 @@ const ChoreManagement = () => {
       assignedTo: "",
       startDate: "",
       room: "",
-      scheduledDays: null
+      scheduledDays: null,
+      assignees: [],
+      rotationEnabled: false,
+      rotationType: "completion",
+      rotationSchedule: null
     });
   };
 
@@ -426,6 +497,13 @@ const ChoreManagement = () => {
       }
 
       await markChoreComplete(choreId, userId, completionComment);
+      
+      // Get the chore data to check rotation settings
+      const chore = chores.find(c => c.id === choreId);
+      if (chore?.rotationEnabled && chore?.rotationType === 'completion') {
+        await rotateChoreAssignee(choreId);
+      }
+      
       await loadChores();
       setCompletionComment('');
     } catch (error) {
@@ -550,25 +628,81 @@ const ChoreManagement = () => {
   };
 
   const renderChildSelect = () => (
-    <FormControl fullWidth sx={{ mb: 2 }}>
-      <InputLabel>Assign To</InputLabel>
-      <Select
-        value={choreForm.assignedTo}
-        onChange={(e) =>
-          handleAssignedToChange(e)
-        }
-        label="Assign To"
-        disabled={loading}
-      >
-        {familyMembers
-          .filter((member) => member.role === "child" && member.uid)
-          .map((child) => (
-            <MenuItem key={`child-select-${child.uid}`} value={child.uid}>
-              {child.displayName || child.email || "Unnamed Child"}
-            </MenuItem>
-          ))}
-      </Select>
-    </FormControl>
+    <Box sx={{ mb: 2 }}>
+      <FormControl fullWidth>
+        <InputLabel>Assign To</InputLabel>
+        <Select
+          multiple
+          value={choreForm.assignees}
+          onChange={handleAssignedToChange}
+          label="Assign To"
+          disabled={loading}
+          renderValue={(selected) => {
+            const selectedChildren = familyMembers
+              .filter(member => selected.includes(member.uid))
+              .map(child => child.displayName || child.email || "Unnamed Child");
+            return selectedChildren.join(", ");
+          }}
+        >
+          {familyMembers
+            .filter((member) => member.role === "child" && member.uid)
+            .map((child) => (
+              <MenuItem key={`child-select-${child.uid}`} value={child.uid}>
+                <Checkbox checked={choreForm.assignees.indexOf(child.uid) > -1} />
+                {child.displayName || child.email || "Unnamed Child"}
+              </MenuItem>
+            ))}
+        </Select>
+      </FormControl>
+
+      {choreForm.assignees.length > 1 && (
+        <Box sx={{ mt: 2 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={choreForm.rotationEnabled}
+                onChange={(e) => setChoreForm({
+                  ...choreForm,
+                  rotationEnabled: e.target.checked
+                })}
+              />
+            }
+            label="Enable Rotation"
+          />
+
+          {choreForm.rotationEnabled && (
+            <>
+              <FormControl fullWidth sx={{ mt: 1 }}>
+                <InputLabel>Rotation Type</InputLabel>
+                <Select
+                  value={choreForm.rotationType}
+                  onChange={handleRotationTypeChange}
+                  label="Rotation Type"
+                >
+                  <MenuItem value="completion">Rotate After Completion</MenuItem>
+                  <MenuItem value="schedule">Schedule-based Rotation</MenuItem>
+                </Select>
+              </FormControl>
+
+              {choreForm.rotationType === "schedule" && (
+                <FormControl fullWidth sx={{ mt: 1 }}>
+                  <InputLabel>Rotation Schedule</InputLabel>
+                  <Select
+                    value={choreForm.rotationSchedule}
+                    onChange={handleRotationScheduleChange}
+                    label="Rotation Schedule"
+                  >
+                    <MenuItem value="daily">Daily</MenuItem>
+                    <MenuItem value="weekly">Weekly</MenuItem>
+                    <MenuItem value="monthly">Monthly</MenuItem>
+                  </Select>
+                </FormControl>
+              )}
+            </>
+          )}
+        </Box>
+      )}
+    </Box>
   );
 
   const handleDuplicateChore = async () => {

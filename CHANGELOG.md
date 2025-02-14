@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2025-02-13]
+
+### Added
+- Multiple assignee support for chores
+  - Ability to assign multiple children to a single chore
+  - New multi-select interface in chore assignment dialog
+  - Maintains reward calculation based on primary assignee
+- Chore rotation system
+  - Automatic rotation of chore assignments between multiple assigned children
+  - Two rotation types:
+    - Completion-based: Rotates to next child after chore completion
+    - Schedule-based: Rotates on daily, weekly, or monthly schedule
+  - Visual indicators showing current assignee and rotation status
+  - Automatic background rotation checker for schedule-based rotations
+
+### Enhanced
+- Updated chore management interface
+  - New rotation configuration options in chore dialog
+  - Improved child selection with checkbox-based multi-select
+  - Clear display of rotation schedule and next rotation date
+- Extended chore data structure
+  - Added support for multiple assignees array
+  - Added rotation configuration fields
+  - Added tracking for rotation history and schedule
+
+### Technical
+- Added new database fields for rotation support:
+  - `assignees`: Array of assigned child IDs
+  - `currentAssigneeIndex`: Tracks current position in rotation
+  - `rotationEnabled`: Toggle for rotation feature
+  - `rotationType`: 'completion' or 'schedule'
+  - `rotationSchedule`: Rotation frequency for schedule-based rotation
+  - `lastRotation`: Timestamp of last rotation
+
 ## [2025-02-04]
 
 ### Added

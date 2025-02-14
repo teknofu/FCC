@@ -43,7 +43,14 @@ export const createChore = async (choreData, schedulePattern = null) => {
       parentAccess: [user.uid], // Initialize with creator's access
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      status: 'pending'
+      status: 'pending',
+      // Support for multiple assignees and rotation
+      assignees: Array.isArray(choreData.assignedTo) ? choreData.assignedTo : [choreData.assignedTo],
+      currentAssigneeIndex: 0,
+      rotationEnabled: choreData.rotationEnabled || false,
+      rotationType: choreData.rotationType || 'completion', // 'completion' or 'schedule'
+      rotationSchedule: choreData.rotationSchedule || null, // For schedule-based rotation (e.g., weekly, monthly)
+      lastRotation: serverTimestamp(),
     };
 
     // Add schedule if provided
@@ -163,6 +170,12 @@ export const updateChore = async (choreId, choreData) => {
       reward: choreData.resetRewards ? 0 : (parseFloat(choreData.reward) || 0),
       timeframe: choreData.timeframe,
       assignedTo: choreData.assignedTo,
+      // Support for multiple assignees and rotation
+      assignees: Array.isArray(choreData.assignees) ? choreData.assignees : [choreData.assignedTo],
+      currentAssigneeIndex: choreData.currentAssigneeIndex || 0,
+      rotationEnabled: choreData.rotationEnabled || false,
+      rotationType: choreData.rotationType || 'completion',
+      rotationSchedule: choreData.rotationSchedule || null,
       scheduledDays: choreData.scheduledDays || {},
       startDate: choreData.startDate || null,
       status: choreData.status || 'pending',
@@ -299,6 +312,50 @@ export const verifyChore = async (choreId, isApproved, verifiedBy, comment = "")
     }
   } catch (error) {
     console.error('Error verifying chore:', error);
+    throw error;
+  }
+};
+
+/**
+ * Rotate the assignee for a chore
+ * @param {string} choreId - The chore ID
+ * @returns {Promise<Object>} The updated chore
+ */
+export const rotateChoreAssignee = async (choreId) => {
+  try {
+    const choreRef = doc(db, 'chores', choreId);
+    
+    return await runTransaction(db, async (transaction) => {
+      const choreDoc = await transaction.get(choreRef);
+      if (!choreDoc.exists()) {
+        throw new Error('Chore not found');
+      }
+
+      const choreData = choreDoc.data();
+      if (!choreData.rotationEnabled || !Array.isArray(choreData.assignees) || choreData.assignees.length <= 1) {
+        return choreData;
+      }
+
+      // Calculate next assignee index
+      const nextIndex = (choreData.currentAssigneeIndex + 1) % choreData.assignees.length;
+
+      // Update the chore with new assignee
+      const updates = {
+        currentAssigneeIndex: nextIndex,
+        assignedTo: choreData.assignees[nextIndex],
+        lastRotation: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      transaction.update(choreRef, updates);
+
+      return {
+        ...choreData,
+        ...updates
+      };
+    });
+  } catch (error) {
+    console.error('Error rotating chore assignee:', error);
     throw error;
   }
 };
