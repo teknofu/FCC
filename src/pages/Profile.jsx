@@ -69,22 +69,55 @@ const Profile = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Grid container spacing={3}>
+    <Container 
+      maxWidth="md" 
+      sx={{ 
+        py: { xs: 2, sm: 4 },
+        px: { xs: 1, sm: 2 }
+      }}
+    >
+      <Grid container spacing={{ xs: 2, sm: 3 }}>
         {/* Profile Information Section */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 4 }}>
-            <Box display="flex" alignItems="center" mb={4}>
+          <Paper sx={{ p: { xs: 2, sm: 4 } }}>
+            <Box 
+              sx={{
+                display: "flex", 
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'center', sm: 'flex-start' },
+                mb: { xs: 2, sm: 4 },
+                textAlign: { xs: 'center', sm: 'left' }
+              }}
+            >
               <Avatar
                 src={user?.photoURL}
                 alt={user?.displayName}
-                sx={{ width: 80, height: 80, mr: 3 }}
+                sx={{ 
+                  width: { xs: 64, sm: 80 }, 
+                  height: { xs: 64, sm: 80 }, 
+                  mb: { xs: 2, sm: 0 },
+                  mr: { xs: 0, sm: 3 }
+                }}
               />
               <Box>
-                <Typography variant="h4" gutterBottom>
+                <Typography 
+                  variant="h4" 
+                  gutterBottom
+                  sx={{
+                    fontSize: { xs: '1.5rem', sm: '2.125rem' },
+                    wordBreak: 'break-word'
+                  }}
+                >
                   Profile Settings
                 </Typography>
-                <Typography variant="body1" color="textSecondary">
+                <Typography 
+                  variant="body1" 
+                  color="textSecondary"
+                  sx={{
+                    wordBreak: 'break-word',
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }}
+                >
                   {user?.email}
                 </Typography>
               </Box>
@@ -102,21 +135,36 @@ const Profile = () => {
               </Alert>
             )}
 
-            <Box component="form" onSubmit={handleProfileUpdate}>
+            <Box 
+              component="form" 
+              onSubmit={handleProfileUpdate}
+              sx={{
+                '& .MuiTextField-root': {
+                  mb: { xs: 1.5, sm: 2 }
+                }
+              }}
+            >
               <TextField
                 fullWidth
                 label="Display Name"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                margin="normal"
                 required
+                sx={{
+                  '& .MuiInputBase-input': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
               />
 
               <Button
                 type="submit"
                 variant="contained"
                 color="primary"
-                sx={{ mt: 2 }}
+                sx={{ 
+                  mt: { xs: 1, sm: 2 },
+                  width: { xs: '100%', sm: 'auto' }
+                }}
               >
                 Update Profile
               </Button>
@@ -126,8 +174,15 @@ const Profile = () => {
 
         {/* Password Change Section */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 4 }}>
-            <Typography variant="h5" gutterBottom>
+          <Paper sx={{ p: { xs: 2, sm: 4 } }}>
+            <Typography 
+              variant="h5" 
+              gutterBottom
+              sx={{
+                fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                mb: 2
+              }}
+            >
               Change Password
             </Typography>
 
@@ -143,15 +198,27 @@ const Profile = () => {
               </Alert>
             )}
 
-            <Box component="form" onSubmit={handlePasswordChange}>
+            <Box 
+              component="form" 
+              onSubmit={handlePasswordChange}
+              sx={{
+                '& .MuiTextField-root': {
+                  mb: { xs: 1.5, sm: 2 }
+                }
+              }}
+            >
               <TextField
                 fullWidth
                 type="password"
                 label="Current Password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                margin="normal"
                 required
+                sx={{
+                  '& .MuiInputBase-input': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
               />
 
               <TextField
@@ -160,8 +227,12 @@ const Profile = () => {
                 label="New Password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                margin="normal"
                 required
+                sx={{
+                  '& .MuiInputBase-input': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
               />
 
               <TextField
@@ -170,15 +241,22 @@ const Profile = () => {
                 label="Confirm New Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                margin="normal"
                 required
+                sx={{
+                  '& .MuiInputBase-input': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
               />
 
               <Button
                 type="submit"
                 variant="contained"
                 color="primary"
-                sx={{ mt: 2 }}
+                sx={{ 
+                  mt: { xs: 1, sm: 2 },
+                  width: { xs: '100%', sm: 'auto' }
+                }}
               >
                 Change Password
               </Button>

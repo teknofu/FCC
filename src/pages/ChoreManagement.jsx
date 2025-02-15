@@ -738,7 +738,7 @@ const ChoreManagement = () => {
 
   return (
     <Box sx={{ position: "relative", minHeight: "100vh" }}>
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 2 } }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Box
@@ -875,7 +875,7 @@ const ChoreManagement = () => {
                   <Grid item xs={12} sm={6} md={4} lg={3} key={chore.id}>
                     <Box
                       sx={{
-                        p: 2,
+                        p: { xs: 1.5, sm: 2 },
                         height: '100%',
                         border: "1px solid #e0e0e0",
                         borderRadius: 1,
@@ -886,8 +886,24 @@ const ChoreManagement = () => {
                       }}
                     >
                       <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="h6" noWrap sx={{ mb: 1 }}>{chore.title}</Typography>
-                        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                        <Typography 
+                          variant="h6" 
+                          sx={{ 
+                            mb: 1,
+                            wordBreak: 'break-word',
+                            fontSize: { xs: '1.1rem', sm: '1.25rem' }
+                          }}
+                        >
+                          {chore.title}
+                        </Typography>
+                        <Typography 
+                          variant="body2" 
+                          color="textSecondary" 
+                          sx={{ 
+                            mb: 2,
+                            wordBreak: 'break-word'
+                          }}
+                        >
                           {chore.description}
                         </Typography>
                         {role === "parent" && (
@@ -965,13 +981,15 @@ const ChoreManagement = () => {
                       <Box
                         sx={{
                           display: "flex",
-                          gap: 1,
+                          gap: { xs: 0.5, sm: 1 },
                           flexWrap: "wrap",
                           justifyContent: "flex-start",
                           mt: 2,
                           "& .MuiButton-root": {
-                            minWidth: "auto",
+                            minWidth: { xs: '70px', sm: 'auto' },
                             mb: 1,
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                            px: { xs: 1, sm: 2 }
                           },
                         }}
                       >
