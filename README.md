@@ -17,7 +17,7 @@ A web application designed to streamline the management and tracking of househol
 - Material-UI
 - React Router
 - Redux Toolkit
-- Firebase (coming soon)
+- Firebase
 
 ## Getting Started
 
@@ -38,8 +38,8 @@ A web application designed to streamline the management and tracking of househol
 - `/src/components` - Reusable UI components
 - `/src/pages` - Page components
 - `/src/assets` - Static assets
-- `/src/store` - Redux store setup (coming soon)
-- `/src/services` - API and Firebase services (coming soon)
+- `/src/store` - Redux store setup
+- `/src/services` - API and Firebase services
 
 ## Contributing
 
