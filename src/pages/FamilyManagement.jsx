@@ -34,7 +34,7 @@ const FamilyManagement = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedChild, setSelectedChild] = useState(null);
   const [formData, setFormData] = useState({
-    name: "",
+    displayName: "",
     email: "",
     dateOfBirth: "",
     role: "child",
@@ -70,7 +70,7 @@ const FamilyManagement = () => {
   const handleOpenDialog = (child = null) => {
     if (child) {
       setFormData({
-        name: child.name || "",
+        displayName: child.displayName || "",
         email: child.email || "",
         dateOfBirth: child.dateOfBirth || "",
         role: child.role || "child",
@@ -78,7 +78,7 @@ const FamilyManagement = () => {
       setSelectedChild(child);
     } else {
       setFormData({
-        name: "",
+        displayName: "",
         email: "",
         dateOfBirth: "",
         role: "child",
@@ -92,7 +92,7 @@ const FamilyManagement = () => {
     setOpenDialog(false);
     setSelectedChild(null);
     setFormData({
-      name: "",
+      displayName: "",
       email: "",
       dateOfBirth: "",
       role: "child",
@@ -217,9 +217,9 @@ const FamilyManagement = () => {
             <TextField
               fullWidth
               label="Name"
-              value={formData.name}
+              value={formData.displayName}
               onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
+                setFormData({ ...formData, displayName: e.target.value })
               }
               margin="normal"
               required
