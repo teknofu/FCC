@@ -37,7 +37,8 @@ import {
   getChores,
   markChoreComplete,
   verifyChore,
-  getAssignedChores
+  getAssignedChores,
+  getFamilyMembers
 } from '../services/chores';
 
 const Chores = () => {
@@ -47,10 +48,17 @@ const Chores = () => {
   const [openChoreForm, setOpenChoreForm] = useState(false);
   const [editingChore, setEditingChore] = useState(null);
   const [children] = useState([]); // TODO: Fetch children from Firebase
+  const [familyMembers, setFamilyMembers] = useState([]);
 
   useEffect(() => {
     loadChores();
-  }, [filters]);
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      loadFamilyMembers();
+    }
+  }, [user]);
 
   const loadChores = async () => {
     try {
@@ -78,6 +86,15 @@ const Chores = () => {
     } catch (error) {
       console.error('Error loading chores:', error);
       dispatch(setError(error.message));
+    }
+  };
+
+  const loadFamilyMembers = async () => {
+    try {
+      const members = await getFamilyMembers(user.uid);
+      setFamilyMembers(members);
+    } catch (error) {
+      console.error('Error loading family members:', error);
     }
   };
 
@@ -201,6 +218,7 @@ const Chores = () => {
               setOpenChoreForm(true);
             }}
             onDelete={handleDeleteChore}
+            familyMembers={familyMembers}
           />
         )}
       </Paper>

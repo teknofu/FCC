@@ -34,6 +34,7 @@ import {
   FormGroup,
   FormControlLabel,
   InputAdornment,
+  Chip
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { Fab } from "@mui/material";
@@ -102,31 +103,57 @@ const ChoreManagement = () => {
     return allChores.length;
   };
 
+  // Function to calculate frequency weight for reward distribution
+  const getFrequencyWeight = (timeframe) => {
+    switch (timeframe) {
+      case 'daily':
+        return 1; // Done every day, so smallest per-task reward
+      case 'weekly':
+        return 7; // ~7x more than daily
+      case 'biweekly':
+        return 15; // ~15x more than daily
+      case 'monthly':
+        return 30; // ~30x more than daily
+      default:
+        return 1;
+    }
+  };
+
   // Calculate reward based on child's pay per period and number of chores
   const calculateReward = async (childId) => {
     if (!childId) return 0;
     
-    const child = familyMembers.find(member => member.uid === childId);
+    // Get the child's pay per period
+    const child = familyMembers.find(m => m.uid === childId);
     if (!child) return 0;
     
     const payPerPeriod = parseFloat(child.payPerPeriod) || 0;
-    if (payPerPeriod === 0) return 0;
 
     try {
-      // Get ALL chores for this child, regardless of status
-      const choreCount = await getActiveChoreCount(childId);
+      // Get all chores for this child, including ones they're in rotation for
+      const childChores = chores.filter(c => {
+        // Check if child is directly assigned
+        if (c.assignedTo === childId) return true;
+        
+        // Check if child is part of rotation
+        if (c.rotationEnabled && Array.isArray(c.assignees)) {
+          return c.assignees.includes(childId);
+        }
+        
+        return false;
+      });
+
+      // Calculate total frequency weight
+      const totalWeight = childChores.reduce((sum, c) => sum + getFrequencyWeight(c.timeframe), 0);
       
-      // Add 1 to include the new chore being created/edited
-      // But don't add 1 if we're editing an existing chore
-      const isEditing = selectedChore !== null;
-      const totalChores = choreCount + (isEditing ? 0 : 1);
+      // Calculate this chore's reward based on its frequency weight
+      const choreWeight = getFrequencyWeight(choreForm.timeframe);
       
-      if (totalChores === 0) return 0;
+      // Add the new chore's weight if we're creating a new chore
+      const finalTotalWeight = totalWeight + (selectedChore ? 0 : choreWeight);
       
-      // Calculate reward as potential earnings divided by number of chores
-      const reward = payPerPeriod / totalChores;
-      
-      return Math.round(reward * 100) / 100; // Round to 2 decimal places
+      const newReward = finalTotalWeight > 0 ? (payPerPeriod * choreWeight) / finalTotalWeight : 0;
+      return Number(newReward.toFixed(2));
     } catch (error) {
       console.error('Error calculating reward:', error);
       return 0;
@@ -215,6 +242,56 @@ const ChoreManagement = () => {
       loadChores();
     }
   }, [familyMembers]);
+
+  // Function to update all chore amounts based on current state
+  const updateAllChoreAmounts = async (childId) => {
+    if (!childId) return;
+
+    try {
+      setLoading(true);
+      
+      // Get all chores for this child, including rotations
+      const childChores = chores.filter(c => 
+        c.assignedTo === childId || 
+        (c.rotationEnabled && Array.isArray(c.assignees) && c.assignees.includes(childId))
+      );
+
+      // Calculate total frequency weight
+      const totalWeight = childChores.reduce((sum, c) => sum + getFrequencyWeight(c.timeframe), 0);
+      
+      // Get child's pay per period
+      const child = familyMembers.find(m => m.uid === childId);
+      if (!child) return;
+      
+      const payPerPeriod = parseFloat(child.payPerPeriod) || 0;
+
+      // Update each chore's reward
+      for (const chore of childChores) {
+        const choreWeight = getFrequencyWeight(chore.timeframe);
+        const newReward = totalWeight > 0 ? (payPerPeriod * choreWeight) / totalWeight : 0;
+        
+        await updateChore(chore.id, {
+          ...chore,
+          reward: Number(newReward.toFixed(2))
+        });
+      }
+
+      // Refresh chores list
+      await loadChores();
+    } catch (error) {
+      console.error('Error updating chore amounts:', error);
+      setError('Failed to update chore amounts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Effect to update amounts when chores or family members change
+  useEffect(() => {
+    if (familyMembers.length > 0 && chores.length > 0) {
+      updateAllChoreAmounts();
+    }
+  }, [familyMembers, chores.length]); // Only trigger on family member changes or chore count changes
 
   // Load available parents
   const loadAvailableParents = async () => {
@@ -425,60 +502,37 @@ const ChoreManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError("");
 
-    // Validate startDate for monthly chores
-    if (choreForm.timeframe === "monthly" && !choreForm.startDate) {
-      setError("Please select a start date for monthly chores.");
-      return;
-    }
-
     try {
-      setLoading(true);
-      setError("");
-
-      const choreData = {
-        ...choreForm,
-        reward: await calculateReward(choreForm.assignedTo),
-        createdBy: user.uid,
-      };
-
-      // Remove scheduledDays for daily chores
-      if (choreData.timeframe === "daily") {
-        delete choreData.scheduledDays;
-      }
-
       if (selectedChore) {
-        await updateChore(selectedChore.id, choreData);
+        await updateChore(selectedChore.id, choreForm);
       } else {
-        await createChore(choreData);
+        await createChore(choreForm);
       }
-
-      handleCloseDialog();
-      loadChores();
+      
+      // Refresh chores to trigger the update effect
+      const updatedChores = await getChores(user.uid);
+      setChores(updatedChores);
+      
+      setOpenDialog(false);
+      resetForm();
     } catch (error) {
-      console.error("Error saving chore:", error);
-      setError(error.message || "Failed to save chore");
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (choreId) => {
-    if (!window.confirm("Are you sure you want to delete this chore?")) {
-      return;
-    }
-
     try {
-      setLoading(true);
-      setError("");
       await deleteChore(choreId);
-      loadChores();
+      // Refresh chores to trigger the update effect
+      const updatedChores = await getChores(user.uid);
+      setChores(updatedChores);
     } catch (error) {
-      console.error("Error deleting chore:", error);
-      setError(error.message || "Failed to delete chore");
-    } finally {
-      setLoading(false);
+      setError(error.message);
     }
   };
 
@@ -908,9 +962,35 @@ const ChoreManagement = () => {
                         </Typography>
                         {role === "parent" && (
                           <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                            Assigned to:{" "}
-                            {familyMembers.find((m) => m.uid === chore.assignedTo)
-                              ?.displayName || "Unknown"}
+                            {chore.rotationEnabled ? (
+                              <>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Rotating Chore - Current: {" "}
+                                    {familyMembers.find((m) => m.uid === chore.assignedTo)?.displayName || "Unknown"}
+                                  </Typography>
+                                  <Typography variant="body2" color="textSecondary">
+                                    All Assignees:
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {chore.assignees?.map(childId => (
+                                      <Chip
+                                        key={childId}
+                                        label={familyMembers.find(m => m.uid === childId)?.displayName || "Unknown"}
+                                        size="small"
+                                        variant={childId === chore.assignedTo ? "filled" : "outlined"}
+                                        color={childId === chore.assignedTo ? "primary" : "default"}
+                                      />
+                                    ))}
+                                  </Box>
+                                </Box>
+                              </>
+                            ) : (
+                              <>
+                                Assigned to:{" "}
+                                {familyMembers.find((m) => m.uid === chore.assignedTo)?.displayName || "Unknown"}
+                              </>
+                            )}
                           </Typography>
                         )}
                         {renderChoreComment(chore)}

@@ -146,14 +146,60 @@ const FinancialManagement = () => {
     setError("");
 
     try {
-      await setupPaymentSchedule({
-        childId: selectedChild.uid,
-        ...scheduleData,
-      });
+      // Update both payment schedule and pay per period in parallel
+      await Promise.all([
+        setupPaymentSchedule({
+          childId: selectedChild.uid,
+          ...scheduleData,
+        }),
+        updateChild(selectedChild.uid, { 
+          payPerPeriod: newPayPerPeriod 
+        })
+      ]);
+      
+      // Refresh family members to get updated child data
+      const updatedMembers = await getFamilyMembers(user.uid);
+      setFamilyMembers(updatedMembers);
+      
+      // Update selected child with new data
+      const updatedChild = updatedMembers.find(m => m.uid === selectedChild.uid);
+      if (updatedChild) {
+        setSelectedChild(updatedChild);
+        setPayPerPeriod(updatedChild.payPerPeriod || 0);
+      }
+      
+      // Refresh financial data
       await loadFinancialData();
     } catch (error) {
       console.error("Error updating payment schedule:", error);
       setError("Failed to update payment schedule");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePayPerPeriodChange = async () => {
+    if (!selectedChild?.uid) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      await updateChild(selectedChild.uid, { payPerPeriod: newPayPerPeriod });
+      
+      // Refresh family members to get updated child data
+      const updatedMembers = await getFamilyMembers(user.uid);
+      setFamilyMembers(updatedMembers);
+      
+      // Update selected child with new data
+      const updatedChild = updatedMembers.find(m => m.uid === selectedChild.uid);
+      if (updatedChild) {
+        setSelectedChild(updatedChild);
+        setPayPerPeriod(updatedChild.payPerPeriod || 0);
+      }
+    } catch (error) {
+      console.error("Error updating pay per period:", error);
+      setError("Failed to update pay per period");
     } finally {
       setLoading(false);
     }
@@ -177,22 +223,6 @@ const FinancialManagement = () => {
     } catch (error) {
       console.error("Error processing payment:", error);
       setError("Failed to process payment");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePayPerPeriodChange = async () => {
-    if (newPayPerPeriod === payPerPeriod) return;
-    
-    try {
-      setLoading(true);
-      await updateChild(selectedChild.uid, { payPerPeriod: newPayPerPeriod });
-      setPayPerPeriod(newPayPerPeriod);
-    } catch (error) {
-      console.error("Error updating pay per period:", error);
-      setError("Failed to update pay per period");
-      setNewPayPerPeriod(payPerPeriod); // Reset to original value on error
     } finally {
       setLoading(false);
     }
@@ -235,7 +265,6 @@ const FinancialManagement = () => {
             indicatorColor="primary"
             textColor="primary"
           >
-            
             <Tab label="Earnings & Payments" />
             <Tab label="History" />
           </Tabs>
@@ -246,8 +275,6 @@ const FinancialManagement = () => {
             </Box>
           ) : (
             <>
-              
-
               <TabPanel value={activeTab} index={0}>
                 <Grid container spacing={3}>
                   {/* Top Row */}

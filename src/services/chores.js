@@ -587,23 +587,46 @@ export const getPaymentSchedule = async (childId) => {
 
 /**
  * Setup payment schedule for a child
- * @param {string} childId - The child's ID
- * @param {Object} scheduleData - Payment schedule data
+ * @param {Object} params - The parameters object
+ * @param {string} params.childId - The child's ID
+ * @param {string} params.frequency - Payment frequency (weekly, monthly)
+ * @param {number} [params.dayOfWeek] - Day of week for weekly payments (0-6)
+ * @param {number} [params.dayOfMonth] - Day of month for monthly payments (1-31)
  * @returns {Promise<Object>} Created payment schedule
  */
-export const setupPaymentSchedule = async (childId, scheduleData) => {
+export const setupPaymentSchedule = async ({ childId, frequency, dayOfWeek, dayOfMonth }) => {
   try {
+    // Base data that's always included
     const data = {
       childId,
-      frequency: scheduleData.frequency,
-      dayOfWeek: scheduleData.dayOfWeek,
-      dayOfMonth: scheduleData.dayOfMonth,
+      frequency,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
+
+    // Add schedule-specific fields based on frequency
+    if (frequency === 'weekly' && dayOfWeek !== undefined) {
+      data.dayOfWeek = dayOfWeek;
+    } else if (frequency === 'monthly' && dayOfMonth !== undefined) {
+      data.dayOfMonth = dayOfMonth;
+    }
+
+    // Delete any existing schedule for this child
+    const existingSchedules = await getDocs(
+      query(collection(db, 'paymentSchedules'), where('childId', '==', childId))
+    );
     
-    const docRef = await addDoc(collection(db, 'paymentSchedules'), data);
-    return { id: docRef.id, ...data };
+    const batch = writeBatch(db);
+    existingSchedules.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    // Create the new schedule
+    const newScheduleRef = doc(collection(db, 'paymentSchedules'));
+    batch.set(newScheduleRef, data);
+    
+    await batch.commit();
+    return { id: newScheduleRef.id, ...data };
   } catch (error) {
     console.error('Error setting up payment schedule:', error);
     throw error;
