@@ -20,7 +20,6 @@ import {
   arrayRemove
 } from 'firebase/firestore';
 import { createSchedule, getScheduleForChore, updateScheduleNextDue } from './schedules';
-import { recordEarning } from './allowances';
 import { getAuth } from 'firebase/auth';
 
 /**
@@ -489,6 +488,209 @@ export const removeParentAccess = async (choreId, parentId) => {
     });
   } catch (error) {
     console.error('Error removing parent access:', error);
+    throw error;
+  }
+};
+
+/**
+ * Record an earning for a child
+ * @param {Object} earningData - The earning data
+ * @param {string} earningData.childId - The child's ID
+ * @param {number} earningData.amount - The amount earned
+ * @param {Object} earningData.source - Source of the earning
+ * @returns {Promise<Object>} The created earning record
+ */
+export const recordEarning = async (earningData) => {
+  try {
+    const data = {
+      childId: earningData.childId,
+      amount: parseFloat(earningData.amount),
+      source: earningData.source,
+      createdAt: serverTimestamp()
+    };
+    
+    const docRef = await addDoc(collection(db, 'earnings'), data);
+    return { id: docRef.id, ...data };
+  } catch (error) {
+    console.error('Error recording earning:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get earnings history for a child
+ * @param {string} childId - The child's ID
+ * @returns {Promise<Array>} List of earnings
+ */
+export const getEarningsHistory = async (childId) => {
+  try {
+    const q = query(
+      collection(db, 'earnings'),
+      where('childId', '==', childId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting earnings history:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get total earnings for a child
+ * @param {string} childId - The child's ID
+ * @returns {Promise<number>} Total earnings
+ */
+export const getTotalEarnings = async (childId) => {
+  try {
+    const earnings = await getEarningsHistory(childId);
+    return earnings.reduce((total, earning) => total + earning.amount, 0);
+  } catch (error) {
+    console.error('Error getting total earnings:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get payment schedule for a child
+ * @param {string} childId - The child's ID
+ * @returns {Promise<Object>} Payment schedule
+ */
+export const getPaymentSchedule = async (childId) => {
+  try {
+    const q = query(
+      collection(db, 'paymentSchedules'),
+      where('childId', '==', childId),
+      limit(1)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      return null;
+    }
+    
+    const doc = querySnapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data()
+    };
+  } catch (error) {
+    console.error('Error getting payment schedule:', error);
+    throw error;
+  }
+};
+
+/**
+ * Setup payment schedule for a child
+ * @param {string} childId - The child's ID
+ * @param {Object} scheduleData - Payment schedule data
+ * @returns {Promise<Object>} Created payment schedule
+ */
+export const setupPaymentSchedule = async (childId, scheduleData) => {
+  try {
+    const data = {
+      childId,
+      frequency: scheduleData.frequency,
+      dayOfWeek: scheduleData.dayOfWeek,
+      dayOfMonth: scheduleData.dayOfMonth,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    
+    const docRef = await addDoc(collection(db, 'paymentSchedules'), data);
+    return { id: docRef.id, ...data };
+  } catch (error) {
+    console.error('Error setting up payment schedule:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get payment history for a child
+ * @param {string} childId - The child's ID
+ * @returns {Promise<Array>} List of payments
+ */
+export const getPaymentHistory = async (childId) => {
+  try {
+    const q = query(
+      collection(db, 'payments'),
+      where('childId', '==', childId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting payment history:', error);
+    throw error;
+  }
+};
+
+/**
+ * Record a payment for earnings
+ * @param {string} childId - The child's ID
+ * @param {Array} earningIds - List of earning IDs being paid
+ * @param {string} method - Payment method
+ * @returns {Promise<Object>} Created payment record
+ */
+export const recordPayment = async (childId, earningIds, method) => {
+  try {
+    const batch = writeBatch(db);
+    let totalAmount = 0;
+    const earnings = [];
+    
+    // Get all earnings being paid
+    for (const earningId of earningIds) {
+      const earningRef = doc(db, 'earnings', earningId);
+      const earningDoc = await getDoc(earningRef);
+      
+      if (!earningDoc.exists()) {
+        throw new Error(`Earning ${earningId} not found`);
+      }
+      
+      const earning = earningDoc.data();
+      totalAmount += earning.amount;
+      earnings.push({
+        id: earningId,
+        ...earning
+      });
+      
+      // Mark earning as paid
+      batch.update(earningRef, {
+        paid: true,
+        paidAt: serverTimestamp()
+      });
+    }
+    
+    // Create payment record
+    const paymentRef = await addDoc(collection(db, 'payments'), {
+      childId,
+      amount: totalAmount,
+      method,
+      earningIds,
+      createdAt: serverTimestamp()
+    });
+    
+    // Commit all updates
+    await batch.commit();
+    
+    return {
+      id: paymentRef.id,
+      childId,
+      amount: totalAmount,
+      method,
+      earnings
+    };
+  } catch (error) {
+    console.error('Error recording payment:', error);
     throw error;
   }
 };

@@ -10,9 +10,11 @@ import {
 } from '@mui/material';
 import { getChores, getChildChores } from '../services/chores';
 import {
+  getPaymentSchedule,
+  getEarningsHistory,
   getTotalEarnings,
-  getEarningsHistory
-} from '../services/allowances';
+  getPaymentHistory
+} from '../services/chores';
 
 const Dashboard = () => {
   const { user, role } = useSelector((state) => state.auth);

@@ -38,8 +38,6 @@ const PaymentHistoryTable = ({ payments }) => {
 
   const getSourceLabel = (source) => {
     switch (source.type) {
-      case 'allowance_payment':
-        return `Allowance Payment (${source.earningCount} earnings)`;
       case 'chore_payment':
         return 'Chore Payment';
       case 'bonus_payment':

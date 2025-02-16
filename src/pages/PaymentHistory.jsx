@@ -13,7 +13,7 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material';
-import { getPaymentHistory } from '../services/allowances';
+import { getPaymentHistory } from '../services/chores';
 import { getFamilyMembers } from '../services/family';
 import PaymentHistoryTable from '../components/Payments/PaymentHistoryTable';
 

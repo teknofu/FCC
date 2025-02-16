@@ -20,7 +20,7 @@ import {
   getPaymentSchedule, 
   recordPayment,
   getEarningsHistory
-} from '../services/allowances';
+} from '../services/chores';
 import { getFamilyMembers } from '../services/family';
 import PaymentScheduleForm from '../components/Payments/PaymentScheduleForm';
 import PaymentProcessor from '../components/Payments/PaymentProcessor';

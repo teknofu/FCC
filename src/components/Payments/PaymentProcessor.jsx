@@ -43,8 +43,10 @@ const PaymentProcessor = ({
   if (!unpaidEarnings?.length) {
     return (
       <Alert severity="info">
-        No unpaid earnings to process. When your child completes chores or earns allowance,
-        their earnings will appear here for payment processing.
+        <Typography variant="body1" color="text.secondary" align="center">
+          No unpaid earnings to process. When your child completes chores,
+          you can process their earnings here.
+        </Typography>
       </Alert>
     );
   }

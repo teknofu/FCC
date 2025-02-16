@@ -34,11 +34,12 @@ const FamilyManagement = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedChild, setSelectedChild] = useState(null);
   const [formData, setFormData] = useState({
-    displayName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     dateOfBirth: "",
-    allowance: "",
     payPerPeriod: "",
+    role: "child"
   });
 
   useEffect(() => {
@@ -71,20 +72,22 @@ const FamilyManagement = () => {
   const handleOpenDialog = (child = null) => {
     if (child) {
       setFormData({
-        displayName: child.displayName || "",
+        firstName: child.firstName || "",
+        lastName: child.lastName || "",
         email: child.email || "",
         dateOfBirth: child.dateOfBirth || "",
-        allowance: child.allowance || "",
         payPerPeriod: child.payPerPeriod || "",
+        role: "child"
       });
       setSelectedChild(child);
     } else {
       setFormData({
-        displayName: "",
+        firstName: "",
+        lastName: "",
         email: "",
         dateOfBirth: "",
-        allowance: "",
         payPerPeriod: "",
+        role: "child"
       });
       setSelectedChild(null);
     }
@@ -95,11 +98,12 @@ const FamilyManagement = () => {
     setOpenDialog(false);
     setSelectedChild(null);
     setFormData({
-      displayName: "",
+      firstName: "",
+      lastName: "",
       email: "",
       dateOfBirth: "",
-      allowance: "",
       payPerPeriod: "",
+      role: "child"
     });
   };
 
@@ -217,10 +221,20 @@ const FamilyManagement = () => {
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
             <TextField
               fullWidth
-              label="Display Name"
-              value={formData.displayName}
+              label="First Name"
+              value={formData.firstName}
               onChange={(e) =>
-                setFormData({ ...formData, displayName: e.target.value })
+                setFormData({ ...formData, firstName: e.target.value })
+              }
+              margin="normal"
+              required
+            />
+            <TextField
+              fullWidth
+              label="Last Name"
+              value={formData.lastName}
+              onChange={(e) =>
+                setFormData({ ...formData, lastName: e.target.value })
               }
               margin="normal"
               required
@@ -249,19 +263,6 @@ const FamilyManagement = () => {
               margin="normal"
               InputLabelProps={{
                 shrink: true,
-              }}
-            />
-            <TextField
-              fullWidth
-              label="Allowance"
-              type="number"
-              value={formData.allowance}
-              onChange={(e) =>
-                setFormData({ ...formData, allowance: e.target.value })
-              }
-              margin="normal"
-              InputProps={{
-                startAdornment: <span>$</span>,
               }}
             />
             <TextField

@@ -13,15 +13,13 @@ import {
 import {
   getPaymentSchedule,
   getEarningsHistory,
-  getChildAllowances,
   getTotalEarnings,
   getPaymentHistory,
   setupPaymentSchedule,
   recordPayment,
-} from "../services/allowances";
+} from "../services/chores";
 import { getFamilyMembers } from "../services/family";
 import ChildSelector from "../components/Financial/ChildSelector";
-import AllowanceSettings from "../components/Financial/AllowanceSettings";
 import EarningsOverview from "../components/Financial/EarningsOverview";
 import TransactionHistory from "../components/Financial/TransactionHistory";
 import PropTypes from "prop-types";
@@ -49,7 +47,7 @@ function TabPanel({ children, value, index, ...other }) {
 }
 
 /**
- * Main Financial Management component that consolidates allowances, payments, and history
+ * Main Financial Management component that consolidates earnings, payments, and history
  */
 const FinancialManagement = () => {
   const { user } = useSelector((state) => state.auth);
@@ -61,7 +59,6 @@ const FinancialManagement = () => {
 
   // Financial data states
   const [paymentSchedule, setPaymentSchedule] = useState(null);
-  const [allowances, setAllowances] = useState([]);
   const [earnings, setEarnings] = useState([]);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [paymentHistory, setPaymentHistory] = useState([]);
@@ -106,20 +103,17 @@ const FinancialManagement = () => {
     try {
       const [
         scheduleData,
-        allowanceData,
         earningsData,
         earningsTotal,
         paymentsData,
       ] = await Promise.all([
         getPaymentSchedule(selectedChild.uid),
-        getChildAllowances(selectedChild.uid),
         getEarningsHistory(selectedChild.uid),
         getTotalEarnings(selectedChild.uid),
         getPaymentHistory(selectedChild.uid),
       ]);
 
       setPaymentSchedule(scheduleData);
-      setAllowances(allowanceData);
       setEarnings(earningsData);
       setTotalEarnings(earningsTotal);
       setPaymentHistory(paymentsData);

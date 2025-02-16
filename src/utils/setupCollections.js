@@ -1,30 +1,5 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
-
-/**
- * Create initial allowance for a child
- * @param {string} childId Child's user ID
- * @returns {Promise<void>}
- */
-export const createInitialAllowance = async (childId) => {
-  try {
-    // Create base weekly allowance
-    await addDoc(collection(db, 'allowances'), {
-      childId,
-      type: 'base',
-      amount: 10.00,  // $10 weekly allowance
-      frequency: 'weekly',
-      nextPaymentDue: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-
-    console.log('Created initial allowance for child:', childId);
-  } catch (error) {
-    console.error('Error creating initial allowance:', error);
-    throw error;
-  }
-};
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 /**
  * Create initial chore schedule

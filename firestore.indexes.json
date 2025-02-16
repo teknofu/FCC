@@ -1,34 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "allowances",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "childId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "allowances",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "childId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "nextPaymentDue",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "chores",
       "queryScope": "COLLECTION",
       "fields": [
@@ -197,6 +169,48 @@
         {
           "fieldPath": "role",
           "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "chores",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "assignedTo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dueDate",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "earnings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "childId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "childId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
         }
       ]
     }
