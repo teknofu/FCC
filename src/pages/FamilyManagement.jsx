@@ -21,7 +21,7 @@ import {
 import { Edit as EditIcon, Delete as DeleteIcon } from "@mui/icons-material";
 import {
   addChildAccount,
-  updateChildAccount,
+  updateChild,
   removeChildAccount,
   subscribeFamilyMembers,
 } from "../services/family";
@@ -34,12 +34,10 @@ const FamilyManagement = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedChild, setSelectedChild] = useState(null);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     email: "",
     dateOfBirth: "",
-    payPerPeriod: "",
-    role: "child"
+    role: "child",
   });
 
   useEffect(() => {
@@ -72,22 +70,18 @@ const FamilyManagement = () => {
   const handleOpenDialog = (child = null) => {
     if (child) {
       setFormData({
-        firstName: child.firstName || "",
-        lastName: child.lastName || "",
+        name: child.name || "",
         email: child.email || "",
         dateOfBirth: child.dateOfBirth || "",
-        payPerPeriod: child.payPerPeriod || "",
-        role: "child"
+        role: child.role || "child",
       });
       setSelectedChild(child);
     } else {
       setFormData({
-        firstName: "",
-        lastName: "",
+        name: "",
         email: "",
         dateOfBirth: "",
-        payPerPeriod: "",
-        role: "child"
+        role: "child",
       });
       setSelectedChild(null);
     }
@@ -98,29 +92,30 @@ const FamilyManagement = () => {
     setOpenDialog(false);
     setSelectedChild(null);
     setFormData({
-      firstName: "",
-      lastName: "",
+      name: "",
       email: "",
       dateOfBirth: "",
-      payPerPeriod: "",
-      role: "child"
+      role: "child",
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError("");
 
     try {
       if (selectedChild) {
-        await updateChildAccount(selectedChild.uid, formData);
+        await updateChild(selectedChild.uid, formData);
       } else {
         await addChildAccount(user.uid, formData);
       }
       handleCloseDialog();
     } catch (error) {
-      console.error("Error saving child account:", error);
-      setError(error.message || "Failed to save child account");
+      console.error("Error managing child account:", error);
+      setError("Failed to manage child account");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -221,37 +216,25 @@ const FamilyManagement = () => {
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
             <TextField
               fullWidth
-              label="First Name"
-              value={formData.firstName}
+              label="Name"
+              value={formData.name}
               onChange={(e) =>
-                setFormData({ ...formData, firstName: e.target.value })
+                setFormData({ ...formData, name: e.target.value })
               }
               margin="normal"
               required
             />
             <TextField
               fullWidth
-              label="Last Name"
-              value={formData.lastName}
+              label="Email"
+              type="email"
+              value={formData.email}
               onChange={(e) =>
-                setFormData({ ...formData, lastName: e.target.value })
+                setFormData({ ...formData, email: e.target.value })
               }
               margin="normal"
               required
             />
-            {!selectedChild && (
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                margin="normal"
-                required
-              />
-            )}
             <TextField
               fullWidth
               label="Date of Birth"
@@ -264,20 +247,6 @@ const FamilyManagement = () => {
               InputLabelProps={{
                 shrink: true,
               }}
-            />
-            <TextField
-              fullWidth
-              label="Pay Per Period"
-              type="number"
-              value={formData.payPerPeriod}
-              onChange={(e) =>
-                setFormData({ ...formData, payPerPeriod: e.target.value })
-              }
-              margin="normal"
-              InputProps={{
-                startAdornment: <span>$</span>,
-              }}
-              helperText="Maximum amount child can earn per period through chores"
             />
           </Box>
         </DialogContent>

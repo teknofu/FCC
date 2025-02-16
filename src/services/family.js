@@ -126,25 +126,18 @@ export const addChildAccount = async (parentUid, childData) => {
 };
 
 // Update a child account
-export const updateChildAccount = async (childId, updates) => {
+export const updateChild = async (childId, updates) => {
   try {
     const childRef = doc(db, "users", childId);
-    const childDoc = await getDoc(childRef);
-    const updateData = {
+    const updatedData = {
       ...updates,
       payPerPeriod: parseFloat(updates.payPerPeriod) || 0,
-      dateOfBirth: updates.dateOfBirth,
       updatedAt: serverTimestamp(),
     };
-
-    if (childDoc.exists()) {
-      await updateDoc(childRef, updateData);
-    } else {
-      await setDoc(childRef, updateData);
-    }
-    return { id: childId, ...updateData };
+    await updateDoc(childRef, updatedData);
+    return true;
   } catch (error) {
-    console.error("Error updating child account:", error);
+    console.error("Error updating child:", error);
     throw error;
   }
 };
